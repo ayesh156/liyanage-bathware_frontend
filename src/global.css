@@ -1,0 +1,475 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Abhaya+Libre:wght@600;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme - Professional Dark Theme
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+  */
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 14%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 47% 14%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 24 95% 53%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 30% 15%;
+    --sidebar-ring: 24 95% 53%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 47% 14%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 222 47% 14%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 24 95% 53%;
+
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 222 30% 15%;
+    --sidebar-ring: 24 95% 53%;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 24 95% 53%;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 24 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 24 95% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* Custom scrollbar for dark theme */
+  .dark ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dark ::-webkit-scrollbar-track {
+    @apply bg-slate-900/50;
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded-full;
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-600;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     LIGHT THEME TYPOGRAPHY CONTRAST ACCESSIBILITY OVERRIDES
+     Forces muted/secondary text to pure black (#000000) in
+     checkout & billing components for cashier readability.
+     Dark mode remains unaffected.
+     ═══════════════════════════════════════════════════════════ */
+  /* Override for Product Search dropdown SKU/description text */
+  .light .text-slate-400,
+  .light .text-slate-500,
+  .light .text-slate-600 {
+    color: #000000 !important;
+  }
+  /* Preserve specific semantic colors in light mode (status badges, etc.) */
+  .light .text-emerald-400,
+  .light .text-emerald-500,
+  .light .text-emerald-600,
+  .light .text-emerald-700,
+  .light .text-amber-400,
+  .light .text-amber-500,
+  .light .text-amber-600,
+  .light .text-amber-700,
+  .light .text-amber-800,
+  .light .text-amber-900,
+  .light .text-red-400,
+  .light .text-red-500,
+  .light .text-red-600,
+  .light .text-red-700,
+  .light .text-cyan-400,
+  .light .text-cyan-600,
+  .light .text-orange-400,
+  .light .text-orange-500,
+  .light .text-orange-600,
+  .light .text-pink-500,
+  .light .text-purple-400,
+  .light .text-purple-500,
+  .light .text-purple-600,
+  .light .text-purple-700,
+  .light .text-teal-400,
+  .light .text-teal-500,
+  .light .text-teal-600,
+  .light .text-teal-700,
+  .light .text-green-400,
+  .light .text-green-500,
+  .light .text-green-600,
+  .light .text-green-700,
+  .light .text-blue-400,
+  .light .text-blue-500,
+  .light .text-blue-600,
+  .light .text-blue-700 {
+    color: revert !important;
+  }
+  /* Ensure line-through muted text remains visible */
+  .light .line-through.text-slate-400,
+  .light .line-through.text-slate-500 {
+    color: #666666 !important;
+    opacity: 0.6 !important;
+  }
+  /* Preserve placeholder colors */
+  .light .placeholder-slate-400::placeholder,
+  .light .placeholder-slate-500::placeholder {
+    color: #9ca3af !important;
+  }
+  /* Invoice Preview / Receipt specific overrides */
+  .light .receipt-label-cell,
+  .light .receipt-value-cell,
+  .light [class*="receipt-"] .text-slate-400,
+  .light [class*="receipt-"] .text-slate-500,
+  .light .text-muted-foreground {
+    color: #000000 !important;
+  }
+  /* Ensure icon/text combos with muted colors still render */
+  .light .opacity-40.text-slate-400,
+  .light .opacity-40.text-slate-500 {
+    opacity: 0.6 !important;
+    color: #666666 !important;
+  }
+
+  /* Custom scrollbar for light theme */
+  .light ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .light ::-webkit-scrollbar-track {
+    @apply bg-slate-100;
+  }
+
+  .light ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  .light ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+@layer components {
+  /* Receipt brand title using Abhaya Libre */
+  .receipt-brand-title {
+    font-family: 'Abhaya Libre', serif;
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+  }
+
+  /* Glass morphism effect */
+  .dark .glass {
+    @apply bg-slate-900/80 backdrop-blur-xl border border-slate-700/50;
+  }
+
+  .light .glass {
+    @apply bg-white/80 backdrop-blur-xl border border-slate-200/50;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-orange-400 via-rose-400 to-purple-400 bg-clip-text text-transparent;
+  }
+
+  /* Glow effects */
+  .glow-orange {
+    box-shadow: 0 0 40px rgba(249, 115, 22, 0.15);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.15);
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, #f97316, #ec4899, #8b5cf6);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+  }
+
+  /* Fancy card hover effect */
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+
+  .dark .card-hover:hover {
+    @apply -translate-y-1;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+  }
+
+  .light .card-hover:hover {
+    @apply -translate-y-1;
+    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Mobile Navigation Animations */
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+  }
+
+  /* Conic gradient for mobile nav */
+  .bg-gradient-conic {
+    background: conic-gradient(var(--tw-gradient-stops));
+  }
+
+  /* Creative table row hover */
+  .table-row-creative {
+    @apply relative overflow-hidden;
+  }
+
+  .table-row-creative::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-0 bg-gradient-to-r from-orange-500/10 to-transparent transition-all duration-300;
+  }
+
+  .table-row-creative:hover::before {
+    @apply w-full;
+  }
+
+  /* Stylish badge animation */
+  .badge-pulse {
+    animation: badge-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes badge-pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  /* Creative shimmer effect for table headers */
+  .shimmer-header {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.05),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Hide scrollbars while maintaining scroll functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     BARCODE LABELS – THERMAL PREVIEW COMPONENT STYLES
+     (Layout helpers — theming is handled inline in BarcodeLabels.tsx)
+     ═══════════════════════════════════════════════════════════ */
+
+  /* Sticker cells within preview (on-screen) */
+  .preview-sticker-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    width: 100%;
+    border-radius: 2px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 2px;
+  }
+
+  .preview-sticker-cell .sticker-barcode {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1px;
+  }
+
+  .preview-sticker-cell .sticker-barcode svg {
+    max-width: 100%;
+    height: auto;
+    max-height: 22px;
+  }
+
+  .preview-sticker-cell .sticker-line1 {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 5.5px;
+    font-weight: 700;
+    color: #000000;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .preview-sticker-cell .sticker-line2 {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 5px;
+    font-weight: 500;
+    color: #000000;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    margin-top: 0.5px;
+  }
+}
