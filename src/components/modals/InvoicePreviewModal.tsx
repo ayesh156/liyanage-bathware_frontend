@@ -198,7 +198,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   </div>
                   <div style={{ fontSize: '11px', ...PBBold, lineHeight: 1.5 }}>
                     හක්මන පාර, දෙයියන්දර<br />
-                    දුරකථන: 0705237647 / 0702629352<br />
+                    දුරකථන: 070-5237647 / 070-2629352<br />
                     Email: liyanagehardware1986@gmail.com
                   </div>
                 </div>
@@ -252,7 +252,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontSize: '10px', ...PB }}>දිනය</div>
-                    <div style={{ fontSize: '11px', ...PBBold }}>{new Date(invoice.issueDate).toLocaleDateString('si-LK', { day: '2-digit', month: 'short', year: '2-digit' })}</div>
+                    <div style={{ fontSize: '11px', ...PBBold }}>{new Date(invoice.issueDate).toISOString().split('T')[0]}</div>
                   </div>
                 </div>
 

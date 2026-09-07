@@ -13,15 +13,18 @@ function formatPrice(n: number): string {
 }
 
 /**
- * Safely format an invoice date for the thermal receipt.
- * Guards against "Invalid Date" by falling back to the current date
- * whenever the raw value is null, undefined, empty, or unparseable.
+ * Safely format an invoice date to YYYY-MM-DD for the thermal receipt.
+ * Guards against "Invalid Date" by validating timestamps and falling back to 
+ * the current date whenever the raw value is null, undefined, empty, or unparseable.
  */
 function formatInvoiceDate(rawDate: string | Date | undefined | null): string {
-  const parsed = rawDate ? new Date(rawDate) : new Date();
+  if (!rawDate) {
+    return new Date().toLocaleDateString('en-CA');
+  }
+  const parsed = new Date(rawDate);
   const isValid = !isNaN(parsed.getTime());
   const safeDate = isValid ? parsed : new Date();
-  return safeDate.toLocaleDateString('si-LK', { day: '2-digit', month: 'short', year: '2-digit' });
+  return safeDate.toLocaleDateString('en-CA');
 }
 
 /**
@@ -224,7 +227,7 @@ export const generateReceiptHTML = (
     </div>
     <div style="font-size:14px;font-weight:800;color:#000;line-height:1.5;">
       හක්මන පාර, දෙයියන්දර<br/>
-      දුරකථන: 0705237647 / 0702629352<br/>
+      දුරකථන: 070-5237647 / 070-2629352<br/>
       Email: liyanagehardware1986@gmail.com
     </div>
   </div>
@@ -242,7 +245,7 @@ export const generateReceiptHTML = (
     </div>
     <div style="text-align:right;">
       <div style="font-size:11px;font-weight:700;">දිනය</div>
-      <div style="font-size:13px;font-weight:800;">${formatInvoiceDate((invoice as any).issueDate ?? (invoice as any).createdAt)}</div>
+      <div style="font-size:13px;font-weight:800;">${formatInvoiceDate(invoice.issueDate || (invoice as any).createdAt)}</div>
     </div>
   </div>
 
