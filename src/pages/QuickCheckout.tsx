@@ -1473,7 +1473,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
 
         playBeep('success');
 
-        // Fire standard hardware template print logic right after
+        // Fire standard bathware template print logic right after
         const walkInCustomer: Customer = {
           id: 'walk-in',
           name: t('invoice.walkInCustomer'),
