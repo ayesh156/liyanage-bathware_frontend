@@ -66,6 +66,9 @@ export function useCheckoutLiveSync(options: UseCheckoutLiveSyncOptions): UseChe
 
   // 🌟 Listen for Server-Sent Events
   useEffect(() => {
+    // 🛑 [TEMP DISABLED] Backend freeze-proof තබාගැනීමට stream listener සම්පූර්ණයෙන්ම අක්‍රිය කර ඇත
+    return;
+
     if (!enabled || !tenantId || !terminalId) {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();

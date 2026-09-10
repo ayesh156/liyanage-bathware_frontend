@@ -1344,7 +1344,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
   }, [t]);
 
   const liveSync = useCheckoutLiveSync({
-    enabled: liveSyncEnabled && !!sessionCode,
+    enabled: false, // 🌟 [DISABLED] liveSyncEnabled && !!sessionCode,
     tenantId,
     terminalId: sessionCode,
     userRole,
@@ -1356,6 +1356,9 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
   // Fires whenever items/discount/customer/receivedAmount/paymentMethod
   // change locally. The hook itself debounces + guards against re-broadcast
   // loops (see useCheckoutLiveSync's isApplyingRemoteState lock).
+
+  // ── State Broadcast (Sender) [TEMP DISABLED] ──
+  /*
   useEffect(() => {
     if (!liveSyncEnabled || !sessionCode || !liveSync.isConnected) return;
 
@@ -1371,6 +1374,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
       paymentMethod,
     });
   }, [items, discount, selectedCustomerId, receivedAmount, paymentMethod, liveSyncEnabled, sessionCode, liveSync.isConnected]);
+
+  */
 
   const generateSessionCode = useCallback(() => {
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -1403,6 +1408,9 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
 
     // ── Universal Checkout: tell every other live-synced terminal that the
     //    sale is done so their carts clear in lockstep with this one. ──
+
+    // 🌟 [TEMP DISABLED]
+/*
     if (liveSyncEnabled && sessionCode && invoiceNumber) {
       liveSync.broadcastInvoiceSaved({
         invoiceNumber,
@@ -1410,6 +1418,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
         finalizedBy: currentUser?.name || 'Admin User',
       });
     }
+      */
 
     setItems([]);
     setDiscount(0);
@@ -1739,6 +1748,9 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
       loadNextInvoiceNumber().then(next => next && setDbNextInvoiceNumber(next));
 
       // ── Universal Checkout: notify every other live-synced terminal ──
+
+      // 🌟 [TEMP DISABLED]
+/*
       if (liveSyncEnabled && sessionCode) {
         liveSync.broadcastInvoiceSaved({
           invoiceNumber: savedInvoiceNumber,
@@ -1746,6 +1758,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
           finalizedBy: currentUser?.name || 'Admin User',
         });
       }
+        */
 
       clearCart();
       toast.success(
@@ -2716,6 +2729,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
 
           <div className="flex items-center gap-1.5">
             {/* ── LIVE SYNC badge/toggle ── */}
+            {false && (
             <div className="relative flex items-center">
               <button
                 onClick={() => {
@@ -2803,6 +2817,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 </div>
               )}
             </div>
+            )}
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
               className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-slate-700' : 'hover:bg-slate-100'} ${soundEnabled ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}`}
