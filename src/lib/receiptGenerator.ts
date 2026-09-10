@@ -91,15 +91,42 @@ export const generateReceiptHTML = (
   const itemsHtml = invoice.items
     .map((item) => {
       const ext = item as any;
-      // STRICT PRINTING RULE: Always prefer Sinhala name regardless of UI locale.
-      // Only fall back to English if Sinhala name is completely missing.
       const printedItemName = item.productNameSi || item.productName;
-      const displayName = printedItemName;
-      // Col 2 (25%): displayPrice — marked/RRP, conditionally struck-through
-      //   ONLY apply line-through if salesPrice < displayPrice.
-      //   If prices are equal or salesPrice > displayPrice, NO strikethrough.
-      // Col 3 (25%): salesPrice  — our actual billing rate ("අපේ මිල")
-      // Col 4 (35%): salesPrice × qty — line total
+      const isPackage = printedItemName.includes('{') && printedItemName.includes('}');
+      
+      let titleHtml = '';
+    if (isPackage) {
+      const [mainTitlePart, subPart] = printedItemName.split('{');
+      // 🌟 [Items: X] කොටසක් තිබේ නම් එය සම්පූර්ණයෙන්ම ඉවත් කර නම පමණක් ගැනීම
+      const cleanMainTitle = mainTitlePart.replace(/\[Items:\s*\d+\]/gi, '').trim();
+      
+      const subItemsList = subPart ? subPart.replace('}', '').trim() : '';
+      const subItemsArray = subItemsList
+        .split('•')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      // 🌟 Package code එක නම ඉදිරියේ නොමැති නම් පමණක් [CODE] prefix එක එක් කිරීම
+      const pkgCode = ext.barcode || ext.no || ext.searchKey || '';
+      const hasCodeInTitle = cleanMainTitle.startsWith('[') && cleanMainTitle.includes(']');
+      const codePrefix = (pkgCode && !hasCodeInTitle)
+        ? `<span style="font-family:'Courier New',monospace;font-size:11px;background:#000;color:#fff;padding:1px 4px;border-radius:2px;margin-right:4px;">[${pkgCode}]</span>`
+        : '';
+
+      const ulItemsHtml = subItemsArray.map(itemStr => `<li style="margin-bottom:2px;list-style-type:disc;line-height:1.2;">${itemStr}</li>`).join('');
+
+      titleHtml = `
+        <div class="pkg-desc" style="white-space:normal !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width:100%;">
+          <div style="font-weight:900;font-size:13px;color:#000;line-height:1.2;margin-bottom:2px;">
+            ${codePrefix}${cleanMainTitle}
+          </div>
+          ${ulItemsHtml ? `<ul style="font-size:10px;font-weight:700;color:#222;line-height:1.25;margin:2px 0 0 14px;padding:0;">${ulItemsHtml}</ul>` : ''}
+        </div>
+      `;
+    } else {
+      titleHtml = `<div style="font-weight:bold;font-size:13px;color:#000;margin-bottom:2px;line-height:1.15;max-width:100%;white-space:normal !important;word-break:break-word !important;overflow-wrap:break-word !important;display:block;">${printedItemName}</div>`;
+    }
+
       const displayPrice = Number(
         ext.displayPrice ?? ext.originalPrice ?? item.unitPrice ?? 0
       );
@@ -107,28 +134,40 @@ export const generateReceiptHTML = (
         ext.salesPrice ?? ext.ourPrice ?? ext.lastPrice ?? item.unitPrice ?? 0
       );
       const lineTotal = salesPrice * item.quantity;
-      const showStrikethrough = salesPrice < displayPrice;
+      const showStrikethrough = !isPackage && salesPrice < displayPrice;
 
-       // CONDITIONAL SUPPRESSION: If salesPrice > displayPrice, render dash instead of numeric display price
-      const showDisplayPriceSuppressed = salesPrice > displayPrice;
-      const displayPriceDisplay = showDisplayPriceSuppressed ? '-' : formatPrice(displayPrice);
+      const displayPriceText = salesPrice > displayPrice ? '-' : formatPrice(displayPrice);
+      const salesPriceText = formatPrice(salesPrice);
 
-      // Display quantity with up to 3 decimal places (e.g., 0.5, 0.125, 1.5)
       const displayQty = Number(item.quantity) % 1 === 0
         ? Number(item.quantity).toString()
         : Number(item.quantity).toFixed(3).replace(/\.?0+$/, '');
-      // ── MULTI-LINE PRODUCT TITLE (zero-ellipsis wrap) ──
-      // Removed white-space:nowrap / overflow:hidden / text-overflow:ellipsis
-      // from the name container. Inline !important overrides beat the receipt
-      // master reset (* { white-space:nowrap !important; word-break:keep-all
-      // !important; }) so long names wrap naturally onto 2-3 compact lines.
+
+      // ══════════════════════════════════════════════════════════
+      // PACKAGE ROW — title + inline sub-items on the left; Qty and
+      // Line Total stacked and vertically centered on the right with
+      // a clean visual gap between them (no unit/display price dashes).
+      // ══════════════════════════════════════════════════════════
+      if (isPackage) {
+        return `
+      <div style="border-bottom:1px dashed #000;padding:5px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;">
+        <div style="flex:1;min-width:0;max-width:calc(100% - 85px);padding-right:4px;">
+          ${titleHtml}
+        </div>
+        <div style="width:80px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:4px;flex-shrink:0;font-family:'Courier New',monospace;color:#000;padding-top:2px;">
+          <span style="font-size:11px;font-weight:800;color:#333;white-space:nowrap !important;">Qty: ${displayQty}</span>
+          <span style="font-size:15px;font-weight:900;white-space:nowrap !important;">${formatPrice(lineTotal)}</span>
+        </div>
+      </div>`;
+      }
+
       return `
       <div style="border-bottom:1px dashed #000;padding:5px 0;">
-        <div style="font-weight:bold;font-size:13px;color:#000;margin-bottom:2px;line-height:1.15;max-width:100%;white-space:normal !important;word-break:break-word !important;overflow-wrap:break-word !important;display:block;">${displayName}</div>
+        ${titleHtml}
         <div class="receipt-row" style="display:flex;justify-content:space-between;font-size:14px;font-weight:800;font-family:'Courier New',monospace;color:#000;width:100%;min-width:0;word-break:keep-all;overflow-wrap:normal;white-space:nowrap;">
           <span style="width:12%;text-align:center;flex-shrink:0;">${displayQty}</span>
-          <span style="width:18%;text-align:right;padding-right:6px;flex-shrink:0;${showStrikethrough ? 'text-decoration:line-through;' : ''}color:#000;opacity:1;">${displayPriceDisplay}</span>
-          <span style="width:18%;text-align:right;font-weight:900;color:#000;flex-shrink:0;">${formatPrice(salesPrice)}</span>
+          <span style="width:18%;text-align:right;padding-right:6px;flex-shrink:0;${showStrikethrough ? 'text-decoration:line-through;' : ''}color:#000;opacity:1;">${displayPriceText}</span>
+          <span style="width:18%;text-align:right;font-weight:900;color:#000;flex-shrink:0;">${salesPriceText}</span>
           <span style="width:22%;text-align:right;font-weight:900;color:#000;flex-shrink:0;word-break:keep-all;overflow-wrap:normal;white-space:nowrap;">${formatPrice(lineTotal)}</span>
         </div>
       </div>`;
@@ -159,6 +198,12 @@ export const generateReceiptHTML = (
     word-break: keep-all !important;
     overflow-wrap: normal !important;
     white-space: nowrap !important;
+  }
+  /* 🌟 [PACKAGE SUB-ITEMS WRAPPING FIX] Sub-items මිල මත නොවැටී ස්වභාවිකව බිඳී පහළ පේළි වලට යාමට */
+  .pkg-desc, .pkg-desc ul, .pkg-desc li, .pkg-desc div {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
   }
   @media print {
     * {
@@ -290,7 +335,25 @@ export const generateReceiptHTML = (
     <!-- ITEM COUNT -->
     <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:14px;font-weight:800;margin-top:2px;">
       <span>භාණ්ඩ සංඛ්‍යාව</span>
-      <span style="font-weight:900;">[${invoice.items.reduce((a, i) => a + i.quantity, 0)}]</span>
+      <span style="font-weight:900;">[${(() => {
+        return invoice.items.reduce((total, item) => {
+          const name = item.productNameSi || item.productName || '';
+          if (name.includes('{') && name.includes('}')) {
+            const openIdx = name.indexOf('{');
+            const closeIdx = name.lastIndexOf('}');
+            const subItemsStr = name.slice(openIdx + 1, closeIdx);
+            const matches = subItemsStr.match(/\(x(\d+)\)/g);
+            let pkgCount = 0;
+            if (matches) {
+              pkgCount = matches.reduce((acc, m) => acc + parseInt(m.replace(/[^0-9]/g, ''), 10), 0);
+            } else {
+              pkgCount = subItemsStr.split('•').filter(Boolean).length;
+            }
+            return total + (pkgCount > 0 ? pkgCount * Number(item.quantity || 1) : Number(item.quantity || 1));
+          }
+          return total + Number(item.quantity || 1);
+        }, 0);
+      })()}]</span>
     </div>
 
     ${totalSavings > 0 ? `

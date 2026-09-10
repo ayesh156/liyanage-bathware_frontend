@@ -93,6 +93,41 @@ const sanitizeProductId = (productId: string | undefined | null): string | null 
   return raw;
 };
 
+// 🌟 [PACKAGE FORMATTER] [Items: X] වෙනුවට Package Code එක [CODE] ලෙස ඉදිරියෙන් හෝ නම සමඟ එක් කිරීම
+const formatPackageDisplayName = (name: string, packageItems?: any[], packageCode?: string): string => {
+    if (!packageItems || !Array.isArray(packageItems) || packageItems.length === 0) {
+      return name;
+    }
+    const codeTag = packageCode ? `[${packageCode}] ` : '';
+    const itemsList = packageItems.map((i: any) => `• ${i.name || i.productName || 'Item'} (x${i.qty || i.quantity || 1})`).join(' ');
+    return `${codeTag}${name} {${itemsList}}`;
+  };
+
+// 🌟 [TOTAL ITEMS COUNT HELPER] Cart එකේ සහ Bills වල Sub-items count එක {} තුළින් ගණනය කර ගැනීම
+export const calculateTotalItemCount = (cartItems: QuickInvoiceItem[]): number => {
+  return cartItems.reduce((sum, item) => {
+    const rawName = item.productName || '';
+    if (rawName.includes('{') && rawName.includes('}')) {
+      const openIdx = rawName.indexOf('{');
+      const closeIdx = rawName.lastIndexOf('}');
+      const subItemsStr = rawName.slice(openIdx + 1, closeIdx);
+      const subItemsMatches = subItemsStr.match(/\(x(\d+)\)/g);
+      
+      let packageSubTotal = 0;
+      if (subItemsMatches) {
+        packageSubTotal = subItemsMatches.reduce((subSum, matchStr) => {
+          const num = parseInt(matchStr.replace(/[^0-9]/g, ''), 10);
+          return subSum + (isNaN(num) ? 1 : num);
+        }, 0);
+      } else {
+        packageSubTotal = subItemsStr.split('•').filter(Boolean).length;
+      }
+      return sum + (packageSubTotal > 0 ? packageSubTotal * Number(item.quantity || 1) : Number(item.quantity || 1));
+    }
+    return sum + Number(item.quantity || 1);
+  }, 0);
+};
+
 export const QuickCheckout: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
@@ -215,6 +250,10 @@ export const QuickCheckout: React.FC = () => {
         const costPrice = Number(item.cost || 0);
         const lastPrice = Number(item.lastPrice || dispPrice);
 
+        // 🌟 [STOCK RECOVERY ON EDIT] Catalog inventoryItems හරහා live store stock එක සොයා ගැනීම
+        const catalogProd = inventoryItems.find((inv) => inv.id === item.productId || (item.productId && inv.id.startsWith(item.productId)));
+        const resolvedStock = catalogProd?.storeQty !== undefined ? Number(catalogProd.storeQty) : (item.storeQty !== undefined ? Number(item.storeQty) : undefined);
+
         return {
           id: item.id,
           productId: item.productId,
@@ -230,6 +269,7 @@ export const QuickCheckout: React.FC = () => {
           cost: costPrice,
           salesPrice: ourPrice,
           lastPrice: lastPrice,
+          storeQty: resolvedStock, // 🌟 සැබෑ stock එක මෙහිදී assign වේ
           total: ourPrice * item.quantity,
         };
       });
@@ -840,24 +880,31 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
         toast.error(`${t('quickCheckout.insufficientStock')}: ${storeQtyVal} ${t('invoice.available')}`);
         return;
       }
-      const newItem: QuickInvoiceItem = {
-        id: `item-${Date.now()}`,
-        productId: flatProduct.flatId,
-        productName: flatProduct.displayName,
-        productNameSi: flatProduct.product.nameAlt || flatProduct.displayName,
-        variantId: flatProduct.variant?.id,
-        size: flatProduct.variant?.size,
-        quantity: 1,
-        unitPrice: ourPriceVal,
-        originalPrice: displayPriceVal,
-        total: ourPriceVal,
-        cost: costVal,
-        lastPrice: lastPriceVal,
-        salesPrice: ourPriceVal,
-        displayPrice: displayPriceVal,
-        ourPrice: ourPriceVal,
-        storeQty: storeQtyVal,
-      };
+      // 🌟 Format title if item is a package bundle with Package Code [CODE]
+    const isPkg = (masterProduct as any)?.isPackage;
+    const pkgSubItems = (masterProduct as any)?.packageItems;
+    const pkgCode = (masterProduct as any)?.searchKey || (masterProduct as any)?.no || (masterProduct as any)?.barcode || '';
+    const finalTitle = isPkg ? formatPackageDisplayName(flatProduct.displayName, pkgSubItems, pkgCode) : flatProduct.displayName;
+    const finalTitleSi = isPkg ? formatPackageDisplayName(flatProduct.product.nameAlt || flatProduct.displayName, pkgSubItems, pkgCode) : (flatProduct.product.nameAlt || flatProduct.displayName);
+
+    const newItem: QuickInvoiceItem = {
+      id: `item-${Date.now()}`,
+      productId: flatProduct.flatId,
+      productName: finalTitle,
+      productNameSi: finalTitleSi,
+      variantId: flatProduct.variant?.id,
+      size: flatProduct.variant?.size,
+      quantity: 1,
+      unitPrice: ourPriceVal,
+      originalPrice: displayPriceVal,
+      total: ourPriceVal,
+      cost: costVal,
+      lastPrice: lastPriceVal,
+      salesPrice: ourPriceVal,
+      displayPrice: displayPriceVal,
+      ourPrice: ourPriceVal,
+      storeQty: storeQtyVal,
+    };
       setItems([...items, newItem]);
     }
 
@@ -905,24 +952,31 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
         toast.error(`${t('quickCheckout.insufficientStock')}: ${storeQtyVal} ${t('invoice.available')}`);
         return;
       }
-      const newItem: QuickInvoiceItem = {
-        id: `item-${Date.now()}`,
-        productId: flatProduct.flatId,
-        productName: flatProduct.displayName,
-        productNameSi: flatProduct.product.nameAlt || flatProduct.displayName,
-        variantId: flatProduct.variant?.id,
-        size: flatProduct.variant?.size,
-        quantity: addQty,
-        unitPrice: ourPriceVal,
-        originalPrice: displayPriceVal,
-        total: addQty * ourPriceVal,
-        cost: costVal,
-        lastPrice: lastPriceVal,
-        salesPrice: ourPriceVal,
-        displayPrice: displayPriceVal,
-        ourPrice: ourPriceVal,
-        storeQty: storeQtyVal,
-      };
+      
+      // 🌟 Format title if item is a package bundle
+    const isPkg = (masterProduct as any)?.isPackage;
+    const pkgSubItems = (masterProduct as any)?.packageItems;
+    const finalTitle = isPkg ? formatPackageDisplayName(flatProduct.displayName, pkgSubItems) : flatProduct.displayName;
+    const finalTitleSi = isPkg ? formatPackageDisplayName(flatProduct.product.nameAlt || flatProduct.displayName, pkgSubItems) : (flatProduct.product.nameAlt || flatProduct.displayName);
+
+    const newItem: QuickInvoiceItem = {
+      id: `item-${Date.now()}`,
+      productId: flatProduct.flatId,
+      productName: finalTitle,
+      productNameSi: finalTitleSi,
+      variantId: flatProduct.variant?.id,
+      size: flatProduct.variant?.size,
+      quantity: addQty,
+      unitPrice: ourPriceVal,
+      originalPrice: displayPriceVal,
+      total: addQty * ourPriceVal,
+      cost: costVal,
+      lastPrice: lastPriceVal,
+      salesPrice: ourPriceVal,
+      displayPrice: displayPriceVal,
+      ourPrice: ourPriceVal,
+      storeQty: storeQtyVal,
+    };
       setItems([...items, newItem]);
     }
 
@@ -2107,15 +2161,22 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
   }, [activeCategoryItemIndex]);
   const isDark = theme === 'dark';
 
+  // 🌟 [TRAILING-COLUMN TRIM] The delete/close action is an absolutely-positioned
+  // overlay anchored to the right edge (see the trash button below), not a real
+  // grid column — but the Subtotal column that sits directly beside it was
+  // reserving more width than it needed. Trimming Subtotal's width here and
+  // handing that space to the leading Product column gives package sub-items
+  // (rendered as a spanning inline list) noticeably more horizontal room.
+// 🌟 Subtotal එකට සහ අනික් columns වලට නියම visual weight එකක් ලබා දීම
   const columnConfigs: ColumnResizeConfig[] = useMemo(() => [
-    { key: 'product', defaultWidth: 18, minWidth: 10, maxWidth: 32 },
+    { key: 'product', defaultWidth: 38, minWidth: 20, maxWidth: 55 },
     { key: 'cost', defaultWidth: 8, minWidth: 5, maxWidth: 14 },
     { key: 'last', defaultWidth: 8, minWidth: 5, maxWidth: 14 },
-    { key: 'sales', defaultWidth: 10, minWidth: 6, maxWidth: 16 },
-    { key: 'display', defaultWidth: 10, minWidth: 6, maxWidth: 16 },
-    { key: 'stock', defaultWidth: 8, minWidth: 5, maxWidth: 14 },
-    { key: 'qty', defaultWidth: 10, minWidth: 6, maxWidth: 16 },
-    { key: 'subtotal', defaultWidth: 14, minWidth: 8, maxWidth: 20 },
+    { key: 'sales', defaultWidth: 9, minWidth: 5, maxWidth: 14 },
+    { key: 'display', defaultWidth: 9, minWidth: 5, maxWidth: 14 },
+    { key: 'stock', defaultWidth: 7, minWidth: 4, maxWidth: 12 },
+    { key: 'qty', defaultWidth: 7, minWidth: 4, maxWidth: 12 },
+    { key: 'subtotal', defaultWidth: 14, minWidth: 10, maxWidth: 20 },
   ], []);
   const {
     getGridTemplateColumns,
@@ -2456,11 +2517,12 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 <ShoppingCart className="w-4 h-4" />
                 {t('quickCheckout.cartItems')}
               </h2>
+              {/* 🌟 Mobile layout එකේද Package sub-items ගණන එකතු කර පෙන්වීම */}
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${items.length > 0
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
                   : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
                 }`}>
-                {items.reduce((sum, i) => sum + i.quantity, 0)}
+                {calculateTotalItemCount(items)}
               </span>
             </div>
 
@@ -3149,7 +3211,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                   <div className="flex items-center justify-between mb-2">
                     <h2 className={`font-bold flex items-center gap-1.5 text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
                       <ShoppingCart className="w-4 h-4" />
-                      {t('quickCheckout.cartItems')} ({items.length})
+                      {/* 🌟 [PACKAGE TOTAL COUNT] Package අයිතමද එකතු කර මුළු භාණ්ඩ සංඛ්‍යාව පෙන්වීම */}
+                      {t('quickCheckout.cartItems')} ({calculateTotalItemCount(items)})
                       {isCartFocused && (
                         <span className={`ml-1 text-[9px] px-1.5 py-0.5 rounded-full ${isDark ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-700'}`}>
                           {"↑↓ → ← 0-9"}
@@ -3247,7 +3310,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                           Qty
                           <span {...getResizeHandlerProps('qty')} className={`absolute right-0 top-0 bottom-0 w-[3px] -mr-[1px] transition-colors ${isDark ? 'bg-transparent hover:bg-amber-500 group-hover/header:bg-slate-400/30' : 'bg-transparent hover:bg-amber-500 group-hover/header:bg-slate-400/40'}`} />
                         </div>
-                        <div className="text-right truncate relative group/header">
+                        {/* 🌟 Close icon එකේ (w-5) ඉඩට පමණක් pr-7 යෙදීම */}
+                        <div className="text-right truncate relative group/header pr-7">
                           Subtotal
                           <span {...getResizeHandlerProps('subtotal')} className={`absolute right-0 top-0 bottom-0 w-[3px] -mr-[1px] transition-colors ${isDark ? 'bg-transparent hover:bg-amber-500 group-hover/header:bg-slate-400/30' : 'bg-transparent hover:bg-amber-500 group-hover/header:bg-slate-400/40'}`} />
                         </div>
@@ -3289,79 +3353,123 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                               }`}
                             style={{ gridTemplateColumns: getGridTemplateColumns() }}
                           >
-                            <div className="min-w-0 truncate">
-                              <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
-                                <p className={`text-sm font-semibold truncate leading-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                  {isSinhala ? (item.productNameSi || item.productName) : item.productName}
-                                </p>
-                              </ProductNameTooltip>
-                            </div>
-                            <div className="text-right truncate">
-                              <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                {Number(item.cost || 0).toFixed(2)}
-                              </span>
-                            </div>
-                            <div className="text-right truncate">
-                              <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {Number(item.lastPrice || 0).toFixed(2)}
-                              </span>
-                            </div>
-                            {/* ══════ INLINE SALES PRICE — click-to-edit toggle ── REFACTORED ── */}
-                            <div className="text-right truncate">
-                              {editingCell?.itemId === item.id && editingCell?.field === 'salesPrice' ? (
-                                <input
-                                  ref={inlineEditInputRef}
-                                  type="number"
-                                  inputMode="decimal"
-                                  step="any"
-                                  className={`w-20 font-bold text-right rounded border px-1.5 py-1 focus:outline-none text-sm font-mono tabular-nums ${isDark
-                                      ? 'bg-amber-500/10 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
-                                      : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
-                                    }`}
-                                  value={inlineEditStr}
-                                  onChange={(e) => {
-                                    // No live validation — just update the string for display
-                                    setInlineEditStr(e.target.value);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      commitCartItemPrice(item.id);
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    commitCartItemPrice(item.id);
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCell({ itemId: item.id, field: 'salesPrice' });
-                                    setInlineEditStr(String(Number(item.salesPrice || item.ourPrice || 0)));
-                                  }}
-                                  className={`cursor-pointer hover:bg-amber-500/10 rounded px-1 -mx-1 transition-colors text-sm font-mono font-bold tabular-nums ${isDark ? 'text-amber-400' : 'text-amber-600'
-                                    }`}
-                                >
-                                  {Number(item.salesPrice || item.ourPrice || 0).toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                            {/* DISPLAY — displayPrice */}
-                            {/* CASHIER COLUMN RULE: If salesPrice > displayPrice, keep the numeric value visible
-                          but apply line-through + muted opacity so the cashier can audit the baseline
-                          rate while visually flagging it as overridden. */}
-                            <div className="text-right truncate">
-                              {Number(item.salesPrice || item.ourPrice || 0) > Number(item.displayPrice || 0) ? (
-                                <span className={`text-sm font-mono line-through opacity-40 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                  {Number(item.displayPrice || 0).toFixed(2)}
-                                </span>
-                              ) : (
-                                <span className={`text-sm font-bold font-mono ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
-                                  {Number(item.displayPrice || 0).toFixed(2)}
-                                </span>
-                              )}
-                            </div>
+                            {(() => {
+                              const rawName = isSinhala ? (item.productNameSi || item.productName) : item.productName;
+                              const isPkg = rawName.includes('{') && rawName.includes('}');
+
+                              // ══════════════════════════════════════════════════════════
+                              // PACKAGE ROW — name + sub-items span Product/Cost/Last/
+                              // Sales/Display as one wide block (grid-column: span 5).
+                              // Stock/Qty/Subtotal stay in their normal grid cells below.
+                              // ══════════════════════════════════════════════════════════
+                              // ══════════════════════════════════════════════════════════
+                              // PACKAGE ROW — name + line-by-line <ul> sub-items spanning cols 1 to 5
+                              // ══════════════════════════════════════════════════════════
+                              if (isPkg) {
+                                const openIdx = rawName.indexOf('{');
+                                const closeIdx = rawName.lastIndexOf('}');
+                                const pkgTitle = openIdx > -1 ? rawName.slice(0, openIdx).trim() : rawName;
+                                const rawSubList = openIdx > -1 && closeIdx > openIdx ? rawName.slice(openIdx + 1, closeIdx).trim() : '';
+                                const pkgSubItems = rawSubList
+                                  ? rawSubList.split('•').map((s) => s.trim()).filter(Boolean)
+                                  : [];
+
+                                return (
+                                  <div className="min-w-0 py-1.5 pr-2" style={{ gridColumn: 'span 5 / span 5' }}>
+                                    <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
+                                      <p className={`text-sm font-bold leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {pkgTitle}
+                                      </p>
+                                    </ProductNameTooltip>
+                                    {pkgSubItems.length > 0 && (
+                                      <ul className={`mt-1 pl-4 list-disc space-y-0.5 text-xs leading-snug ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                        {pkgSubItems.map((sub, sIdx) => (
+                                          <li key={sIdx} className="break-words">
+                                            {sub}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              // ══════════════════════════════════════════════════════════
+                              // STANDARD PRODUCT ROW — Product, Cost, Last, Sales, Display
+                              // render as 5 independent grid columns.
+                              // ══════════════════════════════════════════════════════════
+                              return (
+                                <>
+                                  <div className="min-w-0 py-1">
+                                    <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
+                                      <p className={`text-sm font-semibold truncate leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        {rawName}
+                                      </p>
+                                    </ProductNameTooltip>
+                                  </div>
+                                  <div className="text-right truncate">
+                                    <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                      {Number(item.cost || 0).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="text-right truncate">
+                                    <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                      {Number(item.lastPrice || 0).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <div className="text-right truncate">
+                                    {editingCell?.itemId === item.id && editingCell?.field === 'salesPrice' ? (
+                                      <input
+                                        ref={inlineEditInputRef}
+                                        type="number"
+                                        inputMode="decimal"
+                                        step="any"
+                                        className={`w-20 font-bold text-right rounded border px-1.5 py-1 focus:outline-none text-sm font-mono tabular-nums ${isDark
+                                            ? 'bg-amber-500/10 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
+                                            : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
+                                          }`}
+                                        value={inlineEditStr}
+                                        onChange={(e) => {
+                                          setInlineEditStr(e.target.value);
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            commitCartItemPrice(item.id);
+                                          }
+                                        }}
+                                        onBlur={() => {
+                                          commitCartItemPrice(item.id);
+                                        }}
+                                      />
+                                    ) : (
+                                      <span
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingCell({ itemId: item.id, field: 'salesPrice' });
+                                          setInlineEditStr(String(Number(item.salesPrice || item.ourPrice || 0)));
+                                        }}
+                                        className={`cursor-pointer hover:bg-amber-500/10 rounded px-1 -mx-1 transition-colors text-sm font-mono font-bold tabular-nums ${isDark ? 'text-amber-400' : 'text-amber-600'
+                                          }`}
+                                      >
+                                        {Number(item.salesPrice || item.ourPrice || 0).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-right truncate">
+                                    {Number(item.salesPrice || item.ourPrice || 0) > Number(item.displayPrice || 0) ? (
+                                      <span className={`text-sm font-mono line-through opacity-40 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        {Number(item.displayPrice || 0).toFixed(2)}
+                                      </span>
+                                    ) : (
+                                      <span className={`text-sm font-bold font-mono ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                                        {Number(item.displayPrice || 0).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()}
                             <div className="text-center truncate">
                               <span className={`text-sm font-mono font-semibold ${item.storeQty !== undefined && item.storeQty < 10 ? 'text-amber-500 font-bold animate-pulse' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                 {item.storeQty !== undefined && item.storeQty !== null ? item.storeQty : '-'}
@@ -3418,17 +3526,21 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                 </span>
                               )}
                             </div>
-                            <div className="text-right pr-2 truncate">
+                            {/* 🌟 Delete button එකේ පළලට (w-5) පමණක් ඉඩ තබා Subtotal අගය දකුණටම කිරීම */}
+                            <div className="text-right pr-7 truncate self-center">
                               <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                 {(Number(item.salesPrice || item.ourPrice || 0) * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </span>
                             </div>
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 z-10">
+                            {/* 🌟 Close icon එක row එකේ දකුණු අයිනටම fix කිරීම */}
+                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 z-10 transition-opacity">
                               <button
+                                type="button"
                                 onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                className="p-0.5 rounded text-red-500 hover:bg-red-500/10"
+                                className="p-1 rounded-md text-red-500 hover:bg-red-500/10 transition-colors"
+                                title="Remove item"
                               >
-                                <X className="w-3 h-3" />
+                                <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </div>
@@ -3967,7 +4079,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                     <div className={`flex justify-between ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                       <span>{t('quickCheckout.itemCount')}</span>
                       <span className="font-medium tabular-nums">
-                        {items.reduce((sum, i) => sum + i.quantity, 0)} {t('invoice.units')}
+                        {calculateTotalItemCount(items)} {t('invoice.units')}
                       </span>
                     </div>
 

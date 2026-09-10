@@ -231,9 +231,11 @@ interface ProductTableProps {
   items: InventoryProduct[];
   setItems?: React.Dispatch<React.SetStateAction<InventoryProduct[]>>;
   onDelete?: (id: string) => void;
+  // 🌟 [PACKAGE EDIT] Package එකක් edit කිරීමේදී parent modal එකට pass කිරීම
+  onEditPackage?: (pkgItem: InventoryProduct) => void;
 }
 
-export const ProductTable: React.FC<ProductTableProps> = ({ items, setItems, onDelete }) => {
+export const ProductTable: React.FC<ProductTableProps> = ({ items, setItems, onDelete, onEditPackage }) => {
   const { theme } = useTheme();
   const { user: currentUser } = useAuth();
   const isDark = theme === 'dark';
@@ -573,11 +575,16 @@ export const ProductTable: React.FC<ProductTableProps> = ({ items, setItems, onD
     }
   }, [items]);
 
+  // 🌟 [PACKAGE EDIT ROUTING] Package එකක් නම් සාමාන්‍ය modal එක වෙනුවට onEditPackage එක trigger කිරීම
   const openRowEdit = useCallback((item: InventoryProduct) => {
     setCellEdit(null);
     setInlineEdit(null);
-    setRowEditItem(item);
-  }, []);
+    if ((item as any).isPackage && onEditPackage) {
+      onEditPackage(item);
+    } else {
+      setRowEditItem(item);
+    }
+  }, [onEditPackage]);
 
   const cellEditItem = cellEdit ? items.find((i) => i.id === cellEdit.itemId) : null;
   const cellEditValue = cellEdit && cellEditItem ? (cellEditItem[cellEdit.field as keyof InventoryProduct] as string | number) : undefined;

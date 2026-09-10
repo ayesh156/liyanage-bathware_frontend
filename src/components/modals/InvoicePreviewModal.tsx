@@ -279,15 +279,63 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                 <div style={{ padding: '2px 0' }}>
                   {invoice.items.map((item) => {
                     const extItem = item as ExtendedInvoiceItem;
+                    const printedItemName = item.productNameSi || item.productName;
+                    // 🌟 [PACKAGE CHECK] Package එකක්දැයි හඳුනා ගැනීම
+                    const isPackage = printedItemName.includes('{') && printedItemName.includes('}');
+                    
                     const displayPrice = Number(extItem.displayPrice || extItem.originalPrice || item.unitPrice || 0);
                     const ourPrice = Number(extItem.ourPrice || extItem.salesPrice || item.unitPrice || 0);
                     const lineTotal = ourPrice * item.quantity;
-                    const hasPriceGap = displayPrice > ourPrice;
+                    const hasPriceGap = !isPackage && displayPrice > ourPrice;
 
+                    // ══════════════════════════════════════════════════════════
+                    // 🌟 [PACKAGE ROW] Package sub-items <ul> bullet list එකක් ලෙස render කිරීම
+                    // ══════════════════════════════════════════════════════════
+                    if (isPackage) {
+                      const [mainTitlePart, subPart] = printedItemName.split('{');
+                      // 🌟 [Items: X] ඉවත් කර පිරිසිදු නම ලබා ගැනීම
+                      const cleanMainTitle = mainTitlePart.replace(/\[Items:\s*\d+\]/gi, '').trim();
+                      const subItemsList = subPart ? subPart.replace('}', '').trim() : '';
+                      const subItemsArray = subItemsList.split('•').map((s) => s.trim()).filter(Boolean);
+
+                      // 🌟 Package code එක [CODE] ලෙස ඉදිරියෙන් දැක්වීම
+                      const pkgCode = (extItem as any).barcode || (extItem as any).no || (extItem as any).searchKey || '';
+                      const hasCodeInTitle = cleanMainTitle.startsWith('[') && cleanMainTitle.includes(']');
+
+                      return (
+                        <div key={item.id} style={{ borderBottom: '1px dashed #000', padding: '5px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', width: '100%', boxSizing: 'border-box' }}>
+                          <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 85px)', paddingRight: '4px' }}>
+                            <div style={{ fontWeight: 900, fontSize: '13px', color: '#000', lineHeight: 1.2, marginBottom: '2px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                              {pkgCode && !hasCodeInTitle && (
+                                <span style={{ fontFamily: "'Courier New', monospace", fontSize: '11px', background: '#000', color: '#fff', padding: '1px 4px', borderRadius: '2px', marginRight: '4px' }}>
+                                  [{pkgCode}]
+                                </span>
+                              )}
+                              {cleanMainTitle}
+                            </div>
+                            {subItemsArray.length > 0 && (
+                              <ul style={{ fontSize: '10px', fontWeight: 700, color: '#222', lineHeight: 1.25, margin: '2px 0 0 14px', padding: 0, listStyleType: 'disc', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                {subItemsArray.map((sub, sIdx) => (
+                                  <li key={sIdx} style={{ marginBottom: '2px' }}>{sub}</li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          <div style={{ width: '80px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', gap: '4px', flexShrink: 0, ...mono, color: '#000', paddingTop: '2px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#333', whiteSpace: 'nowrap' }}>Qty: {item.quantity}</span>
+                            <span style={{ fontSize: '15px', fontWeight: 900, whiteSpace: 'nowrap' }}>{formatPrice(lineTotal)}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // ══════════════════════════════════════════════════════════
+                    // STANDARD ROW
+                    // ══════════════════════════════════════════════════════════
                     return (
-                      <div key={item.id} style={{ borderBottom: '1px solid #000', padding: '4px 0' }}>
-                        <div style={{ fontWeight: 800, fontSize: '12px', color: '#000', marginBottom: '2px' }}>
-                          {item.productNameSi || item.productName}
+                      <div key={item.id} style={{ borderBottom: '1px dashed #000', padding: '4px 0' }}>
+                        <div style={{ fontWeight: 800, fontSize: '12px', color: '#000', marginBottom: '2px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                          {printedItemName}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: '#000', ...mono }}>
                           <span style={{ width: '15%', textAlign: 'center' }}>{item.quantity}</span>
@@ -345,10 +393,19 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Item count */}
+                  {/* Item count — 🌟 Package sub-items ද එකතු කර ගණනය කිරීම */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: '12px', ...PB, marginTop: '2px' }}>
                     <span>භාණ්ඩ සංඛ්‍යාව</span>
-                    <span style={{ fontWeight: 800 }}>[{invoice.items.reduce((a, i) => a + i.quantity, 0)}]</span>
+                    <span style={{ fontWeight: 800 }}>
+                      [{invoice.items.reduce((total, item) => {
+                        const name = item.productNameSi || item.productName || '';
+                        const match = name.match(/\[Items:\s*(\d+)\]/i);
+                        if (match && match[1]) {
+                          return total + (parseInt(match[1], 10) * Number(item.quantity || 1));
+                        }
+                        return total + Number(item.quantity || 1);
+                      }, 0)}]
+                    </span>
                   </div>
 
                   {/* Customer savings — always shown when > 0, matches receiptGenerator */}

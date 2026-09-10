@@ -231,14 +231,12 @@ const generate80mmReceiptContent = (invoice: Invoice, customer?: Customer | null
   // Get Sinhala headers if needed
   const headers = isSinhala ? getInvoiceHeaderSinhala() : {};
 
-  // Generate items rows - compact format for 80mm with columnar layout
-  // Layout: Item Name on top, then columns: Qty | සදහන් මිල (displayPrice) | අපේ මිල (ourPrice) | Total
+  // 🌟 [PACKAGE SUPPORT] itemsHtml render එක receiptGenerator.ts සමඟ සමපාත කිරීම
   const itemsHtml = invoice.items.map((item, idx) => {
-    const extItem = item as any; // cast to access QuickInvoiceItem extended fields
-    // Always use Sinhala name - translate if needed
-    const displayName = item.productNameSi || translateToSinhala(item.productName);
+    const extItem = item as any;
+    const printedItemName = item.productNameSi || translateToSinhala(item.productName);
+    const isPackage = printedItemName.includes('{') && printedItemName.includes('}');
 
-    // සදහන් මිල: the publicly advertised/display price
     const displayPrice = Number(
       extItem.displayPrice ||
       extItem.originalPrice ||
@@ -246,7 +244,6 @@ const generate80mmReceiptContent = (invoice: Invoice, customer?: Customer | null
       0
     );
 
-    // අපේ මිල: our actual selling price
     const ourPrice = Number(
       extItem.ourPrice ||
       extItem.salesPrice ||
@@ -254,16 +251,46 @@ const generate80mmReceiptContent = (invoice: Invoice, customer?: Customer | null
       0
     );
 
-    // Line total: ourPrice × qty
     const lineTotal = ourPrice * item.quantity;
+    const hasPriceGap = !isPackage && displayPrice > ourPrice;
 
-    // Show strikethrough on displayPrice only when it differs from ourPrice
-    const hasPriceGap = displayPrice > ourPrice;
+    // ══════════════════════════════════════════════════════════
+    // 🌟 [PACKAGE ROW] Package bullet list format for 80mm layout
+    // ══════════════════════════════════════════════════════════
+    if (isPackage) {
+      const [mainTitle, subPart] = printedItemName.split('{');
+      const subItemsList = subPart ? subPart.replace('}', '').trim() : '';
+      const subItemsArray = subItemsList.split('•').map((s) => s.trim()).filter(Boolean);
 
+      // 🌟 Package code එක නම ඉදිරියෙන් දැක්වීම
+      const pkgCode = extItem.barcode || extItem.no || extItem.searchKey || '';
+      const codePrefix = pkgCode ? `<span style="font-family:'Courier New',monospace;font-size:11px;background:#000;color:#fff;padding:1px 4px;border-radius:2px;margin-right:4px;">${pkgCode}</span>` : '';
+
+      const ulItemsHtml = subItemsArray.map(itemStr => `<li style="margin-bottom:2px;list-style-type:disc;line-height:1.2;">${itemStr}</li>`).join('');
+
+      return `
+        <div style="border-bottom:1px dashed #000000;padding:5px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;">
+          <div style="flex:1;min-width:0;max-width:calc(100% - 85px);padding-right:4px;white-space:normal !important;word-break:break-word !important;overflow-wrap:break-word !important;">
+            <div style="font-weight:900;font-size:12px;color:#000;line-height:1.2;margin-bottom:2px;">
+              ${codePrefix}${mainTitle.trim()}
+            </div>
+            ${ulItemsHtml ? `<ul style="font-size:10px;font-weight:700;color:#222;line-height:1.25;margin:2px 0 0 14px;padding:0;">${ulItemsHtml}</ul>` : ''}
+          </div>
+          <div style="width:80px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:4px;flex-shrink:0;font-family:'Courier New',monospace;color:#000;padding-top:2px;">
+            <span style="font-size:11px;font-weight:800;color:#333;white-space:nowrap !important;">Qty: ${item.quantity}</span>
+            <span style="font-size:15px;font-weight:900;white-space:nowrap !important;">${formatPrice(lineTotal)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // STANDARD ROW
+    // ══════════════════════════════════════════════════════════
     return `
-      <div style="border-bottom: 1px solid #000000; padding: 4px 0;">
-        <div style="font-weight: 800; font-size: 12px; color: #000000; margin-bottom: 2px;">
-          ${displayName}
+      <div style="border-bottom: 1px dashed #000000; padding: 4px 0;">
+        <div style="font-weight: 800; font-size: 12px; color: #000000; margin-bottom: 2px; white-space: normal !important; word-break: break-word !important;">
+          ${printedItemName}
         </div>
         <div style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; font-family: 'Courier New', monospace; color: #000000;">
           <span style="width: 15%; text-align: center;">${item.quantity}</span>
@@ -466,7 +493,16 @@ const generate80mmReceiptContent = (invoice: Invoice, customer?: Customer | null
             <!-- Item count -->
             <div style="display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; font-weight: 700; color: #000000; margin-top: 2px;">
               <span>භාණ්ඩ සංඛ්‍යාව</span>
-              <span style="font-weight: 800;">[${invoice.items.reduce((acc, i) => acc + i.quantity, 0)}]</span>
+              <span style="font-weight: 800;">[${(() => {
+                return invoice.items.reduce((total, item) => {
+                  const name = item.productNameSi || item.productName || '';
+                  const match = name.match(/\[Items:\s*(\d+)\]/i);
+                  if (match && match[1]) {
+                    return total + (parseInt(match[1], 10) * Number(item.quantity || 1));
+                  }
+                  return total + Number(item.quantity || 1);
+                }, 0);
+              })()}]</span>
             </div>
 
             <!-- ═══ ඔබ ලැබූ ලාභය — always rendered when savings > 0 ═══ -->

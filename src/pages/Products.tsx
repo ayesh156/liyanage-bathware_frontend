@@ -13,6 +13,8 @@ import { InventoryProduct } from '../types';
 import api from '../lib/api';
 import { ProductTable } from '../components/ProductTable';
 import { ProductFormModal } from '../components/ProductFormModal';
+// 🌟 [PACKAGE FEATURE] Package creation modal component import කිරීම
+import { PackageFormModal } from '../components/modals/PackageFormModal';
 
 export const Products: React.FC = () => {
   const { t } = useTranslation();
@@ -22,6 +24,9 @@ export const Products: React.FC = () => {
 
   const { inventoryItems, isInventoryLoading, inventoryError, deleteInventoryItem } = useCatalog();
   const [showAddModal, setShowAddModal] = useState(false);
+  // 🌟 [PACKAGE FEATURE] Package modal open/close state සහ Edit State එක
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<InventoryProduct | null>(null);
 
   const isDark = theme === 'dark';
 
@@ -57,6 +62,12 @@ export const Products: React.FC = () => {
     }
   };
 
+  // 🌟 [PACKAGE FEATURE] Package එකක් Edit කිරීමේදී PackageFormModal එකට යොමු කිරීම
+  const handleEditPackage = (pkgItem: InventoryProduct) => {
+    setEditingPackage(pkgItem);
+    setShowPackageModal(true);
+  };
+
   return (
     <div className={`space-y-4 ${isMobile ? 'pb-20' : ''}`}>
       {/* Header */}
@@ -74,6 +85,16 @@ export const Products: React.FC = () => {
             <ScanLine className="w-3.5 h-3.5" />
             {t('barcodeLabels.labelsTrigger')}
           </button>
+
+          {/* 🌟 [PACKAGE FEATURE] Package Modal එක open කරන Trigger Button එක */}
+          <button
+            onClick={() => setShowPackageModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg font-medium transition-all shadow shadow-amber-500/20 text-xs"
+          >
+            <Box className="w-3.5 h-3.5" />
+            Create Package
+          </button>
+
           <button onClick={() => setShowAddModal(true)} className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white rounded-lg font-medium transition-all shadow shadow-orange-500/20 text-xs">
             <Plus className="w-3.5 h-3.5" />
             {t('products.addProduct')}
@@ -133,6 +154,7 @@ export const Products: React.FC = () => {
         <ProductTable
           items={inventoryItems}
           onDelete={handleDeleteProduct}
+          onEditPackage={handleEditPackage}
         />
       )}
 
@@ -142,6 +164,16 @@ export const Products: React.FC = () => {
         onClose={() => setShowAddModal(false)}
         mode="create"
         initialData={null}
+      />
+
+      {/* 🌟 [PACKAGE FEATURE] Package Creation & Edit Modal Container */}
+      <PackageFormModal
+        isOpen={showPackageModal}
+        onClose={() => {
+          setShowPackageModal(false);
+          setEditingPackage(null);
+        }}
+        editingProduct={editingPackage}
       />
     </div>
   );
