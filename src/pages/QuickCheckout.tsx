@@ -3772,8 +3772,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                 </>
                               );
                             })()}
-                            {/* ══════ INLINE QUANTITY — click-to-edit toggle ── REFACTORED ── */}
-                            <div className="flex justify-center items-center">
+                            {/* ══════ INLINE QUANTITY — click-to-edit toggle ── REFACTORED ──
+                                🌟 [TOP-ALIGN FIX] Package items වලදී sub-items list එක නිසා row එක උස වැඩි වුවත්,
+                                Qty අගය COST/LAST/SALES/DISPLAY/STOCK තීරු වගේම top line එකේම පෙන්වීමට self-start + pt-1.5 එකතු කළා ── */}
+                            <div className="flex justify-center items-center self-start pt-1.5">
                               {editingCell?.itemId === item.id && editingCell?.field === 'quantity' ? (
                                 <input
                                   ref={inlineEditInputRef}
@@ -3823,14 +3825,19 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                 </span>
                               )}
                             </div>
-                            {/* 🌟 Delete button එකේ පළලට (w-5) පමණක් ඉඩ තබා Subtotal අගය දකුණටම කිරීම */}
-                            <div className="text-right pr-7 truncate self-center">
+                            {/* 🌟 Delete button එකේ පළලට (w-5) පමණක් ඉඩ තබා Subtotal අගය දකුණටම කිරීම
+                                🌟 [TOP-ALIGN FIX - UPDATED] කලින් self-center නිසා Package items වලදී row එක උස වැඩි වූ විට
+                                Subtotal අගය middle එකට ගිය නිසා, self-start pt-1.5 කිරීමෙන් DISPLAY/LAST PRICE line එකටම align කළා */}
+                            <div className="text-right pr-7 truncate self-start pt-1.5">
                               <span className={`text-sm font-bold font-mono tabular-nums ${isDark ? 'text-white' : 'text-slate-900'}`}>
                                 {(Number(item.salesPrice || item.ourPrice || 0) * item.quantity).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                               </span>
                             </div>
-                            {/* 🌟 Close icon එක row එකේ දකුණු අයිනටම fix කිරීම */}
-                            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 z-10 transition-opacity">
+                            {/* 🌟 Close icon එක row එකේ දකුණු අයිනටම fix කිරීම
+                                🌟 [TOP-ALIGN FIX - UPDATED] කලින් top-1/2 -translate-y-1/2 නිසා Package items වලදී
+                                (row එක උස වැඩි වූ විට) icon එක middle එකට ගිය නිසා, ඒ වෙනුවට top-2.5 යොදා
+                                DISPLAY/LAST PRICE line එකේම (row එකේ top padding py-2.5 එකට ගැලපෙන ලෙස) තැබුවා */}
+                            <div className="absolute right-1.5 top-2.5 opacity-0 group-hover:opacity-100 z-10 transition-opacity">
                               <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
