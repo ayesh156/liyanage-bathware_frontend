@@ -255,33 +255,64 @@ const generate80mmReceiptContent = (invoice: Invoice, customer?: Customer | null
     const hasPriceGap = !isPackage && displayPrice > ourPrice;
 
     // ══════════════════════════════════════════════════════════
-    // 🌟 [PACKAGE ROW] Package bullet list format for 80mm layout
+    // 🌟 [PACKAGE ROW] receiptGenerator.ts සමඟ සමපාත වන අයුරින් සකස් කිරීම
     // ══════════════════════════════════════════════════════════
     if (isPackage) {
-      const [mainTitle, subPart] = printedItemName.split('{');
+      const [mainTitlePart, subPart] = printedItemName.split('{');
+      const cleanMainTitle = mainTitlePart.replace(/\[Items:\s*\d+\]/gi, '').trim();
       const subItemsList = subPart ? subPart.replace('}', '').trim() : '';
       const subItemsArray = subItemsList.split('•').map((s) => s.trim()).filter(Boolean);
 
-      // 🌟 Package code එක නම ඉදිරියෙන් දැක්වීම
       const pkgCode = extItem.barcode || extItem.no || extItem.searchKey || '';
-      const codePrefix = pkgCode ? `<span style="font-family:'Courier New',monospace;font-size:11px;background:#000;color:#fff;padding:1px 4px;border-radius:2px;margin-right:4px;">${pkgCode}</span>` : '';
+      const hasCodeInTitle = cleanMainTitle.startsWith('[') && cleanMainTitle.includes(']');
+      const codePrefix = (pkgCode && !hasCodeInTitle)
+        ? `<span style="font-family:'Courier New',monospace;font-size:11px;background:#000;color:#fff;padding:1px 4px;border-radius:2px;margin-right:4px;">[${pkgCode}]</span>`
+        : '';
 
-      const ulItemsHtml = subItemsArray.map(itemStr => `<li style="margin-bottom:2px;list-style-type:disc;line-height:1.2;">${itemStr}</li>`).join('');
+      const subItemsFormattedHtml = subItemsArray.map(itemStr => {
+        const qtyMatch = itemStr.match(/\([xX](\d+(\.\d+)?)\)/);
+        const subQty = qtyMatch ? qtyMatch[1] : '1';
+        const cleanItemName = itemStr.replace(/\([xX]\d+(\.\d+)?\)/g, '').trim();
 
-      return `
-        <div style="border-bottom:1px dashed #000000;padding:5px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:6px;width:100%;box-sizing:border-box;">
-          <div style="flex:1;min-width:0;max-width:calc(100% - 85px);padding-right:4px;white-space:normal !important;word-break:break-word !important;overflow-wrap:break-word !important;">
-            <div style="font-weight:900;font-size:12px;color:#000;line-height:1.2;margin-bottom:2px;">
-              ${codePrefix}${mainTitle.trim()}
+        return `
+          <div style="margin-top:2px;margin-bottom:2px;">
+            <div style="font-size:11px;font-weight:400;color:#222;line-height:1.2;padding-left:4px;">
+              • ${cleanItemName}
             </div>
-            ${ulItemsHtml ? `<ul style="font-size:10px;font-weight:700;color:#222;line-height:1.25;margin:2px 0 0 14px;padding:0;">${ulItemsHtml}</ul>` : ''}
+            <div class="receipt-row" style="display:flex;font-size:11px;font-weight:400;font-family:'Courier New',monospace;color:#000;width:100%;">
+              <span style="width:12%;text-align:center;flex-shrink:0;">${subQty}</span>
+            </div>
           </div>
-          <div style="width:80px;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:4px;flex-shrink:0;font-family:'Courier New',monospace;color:#000;padding-top:2px;">
-            <span style="font-size:11px;font-weight:800;color:#333;white-space:nowrap !important;">Qty: ${item.quantity}</span>
-            <span style="font-size:15px;font-weight:900;white-space:nowrap !important;">${formatPrice(lineTotal)}</span>
+        `;
+      }).join('');
+
+      const titleHtml = `
+        <div class="pkg-desc" style="white-space:normal !important;word-break:break-word !important;overflow-wrap:break-word !important;max-width:100%;">
+          <div style="font-weight:900;font-size:14px;color:#000;line-height:1.25;margin-bottom:3px;">
+            ${codePrefix}${cleanMainTitle}
+          </div>
+          <div style="margin-bottom:4px;">
+            ${subItemsFormattedHtml}
           </div>
         </div>
       `;
+
+      const displayPriceText = ourPrice > displayPrice ? '-' : formatPrice(displayPrice);
+      const salesPriceText = formatPrice(ourPrice);
+      const displayQty = Number(item.quantity) % 1 === 0
+        ? Number(item.quantity).toString()
+        : Number(item.quantity).toFixed(3).replace(/\.?0+$/, '');
+
+      return `
+        <div style="border-bottom:1px dashed #000;padding:5px 0;">
+          ${titleHtml}
+          <div class="receipt-row" style="display:flex;justify-content:space-between;font-size:14px;font-weight:900;font-family:'Courier New',monospace;color:#000;width:100%;min-width:0;word-break:keep-all;overflow-wrap:normal;white-space:nowrap;margin-top:4px;">
+            <span style="width:12%;text-align:center;flex-shrink:0;">${displayQty}</span>
+            <span style="width:18%;text-align:right;padding-right:6px;flex-shrink:0;${ourPrice < displayPrice ? 'text-decoration:line-through;' : ''}color:#000;opacity:1;">${displayPriceText}</span>
+            <span style="width:18%;text-align:right;color:#000;flex-shrink:0;">${salesPriceText}</span>
+            <span style="width:22%;text-align:right;color:#000;flex-shrink:0;">${formatPrice(lineTotal)}</span>
+          </div>
+        </div>`;
     }
 
     // ══════════════════════════════════════════════════════════

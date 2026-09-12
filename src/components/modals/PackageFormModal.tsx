@@ -35,7 +35,8 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
   const [packageNameSi, setPackageNameSi] = useState('');
   const [searchKey, setSearchKey] = useState('');
   const [packagePrice, setPackagePrice] = useState<number | ''>('');
-  const [packageStock, setPackageStock] = useState<number | ''>(10); // 🌟 Hardcoded 999 වෙනුවට editable stock
+  const [packageDisplayPrice, setPackageDisplayPrice] = useState<number | ''>(''); // 🌟 Display (Strike-through) Price
+  const [packageStock, setPackageStock] = useState<number | ''>(10); // 🌟 Editable stock
   const [selectedItems, setSelectedItems] = useState<SelectedPackageItem[]>([]);
   const [productQuery, setProductQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -47,6 +48,7 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
       setPackageNameSi(editingProduct.nameSinhala || editingProduct.nameSi || '');
       setSearchKey(editingProduct.searchKey || '');
       setPackagePrice(Number(editingProduct.salesPrice) || '');
+      setPackageDisplayPrice(Number(editingProduct.displayPrice) || '');
       setPackageStock(editingProduct.storeQty !== undefined ? Number(editingProduct.storeQty) : 10);
       if (Array.isArray(editingProduct.packageItems)) {
         setSelectedItems(
@@ -136,16 +138,17 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
       const cleanKey = searchKey.trim().toUpperCase();
 
     const payload = {
-      no: cleanKey,
+      // 🌟 [FIX] 'no' field එක සඳහා අකුරු සහිත shortcode එක සෘජුව යැවීමෙන් වැළකී,
+      // එය system එක මඟින් හැසිරෙන සේ තබා Shortcode එක searchKey ලෙස පමණක් යැවීම
       barcode: cleanKey,
       name: packageName.trim(),
       nameSinhala: packageNameSi.trim() || packageName.trim(),
-      searchKey: cleanKey,
+      searchKey: cleanKey, // මෙහි ඕනෑම අකුරක් හෝ අංකයක් (text/number) යැවිය හැක
       salesPrice: Number(packagePrice),
-      displayPrice: totalCalculatedValue > Number(packagePrice) ? totalCalculatedValue : Number(packagePrice),
+      displayPrice: packageDisplayPrice ? Number(packageDisplayPrice) : (totalCalculatedValue > Number(packagePrice) ? totalCalculatedValue : Number(packagePrice)),
       cost: 0,
       lastPrice: Number(packagePrice),
-      storeQty: Number(packageStock || 0), // 🌟 999 වෙනුවට පරිශීලකයා ලබාදුන් stock ප්‍රමාණය
+      storeQty: Number(packageStock || 0),
       salesType: 'Set',
       productCategory: 'Packages',
       isPackage: true,
@@ -156,6 +159,18 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
         originalPrice: item.originalPrice,
       })),
     };
+
+    // Edit mode නොවන අවස්ථාවලදී (Create mode) පමණක් නව sequential product no එකක් backend එකෙන් ලබාගැනීම
+    if (!editingProduct?.id) {
+      try {
+        const nextNoRes: any = await api.get('/products/next-no');
+        (payload as any).no = nextNoRes?.data?.nextNo || nextNoRes?.nextNo || String(Date.now()).slice(-6);
+      } catch {
+        (payload as any).no = String(Date.now()).slice(-6);
+      }
+    } else if (editingProduct?.no) {
+      (payload as any).no = editingProduct.no;
+    }
 
     if (editingProduct?.id) {
       // 🌟 Edit Mode — PUT request එකක් ලෙස update කිරීම
@@ -261,6 +276,17 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
                 value={packagePrice}
                 onChange={(e) => setPackagePrice(e.target.value ? parseFloat(e.target.value) : '')}
                 className={`w-full px-3 py-2 text-xs font-bold rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-emerald-400' : 'bg-slate-50 border-slate-300 text-emerald-600'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Display Price (Crossed Out)</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 85000"
+                value={packageDisplayPrice}
+                onChange={(e) => setPackageDisplayPrice(e.target.value ? parseFloat(e.target.value) : '')}
+                className={`w-full px-3 py-2 text-xs font-bold rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-pink-400' : 'bg-slate-50 border-slate-300 text-pink-600'}`}
               />
             </div>
             {/* 🌟 Package Available Quantity Field */}

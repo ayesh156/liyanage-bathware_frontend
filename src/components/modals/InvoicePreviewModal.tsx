@@ -275,12 +275,11 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                   </div>
                 </div>
 
-                {/* ═══ ITEMS LIST ═══ */}
+              {/* ═══ ITEMS LIST ═══ */}
                 <div style={{ padding: '2px 0' }}>
                   {invoice.items.map((item) => {
                     const extItem = item as ExtendedInvoiceItem;
                     const printedItemName = item.productNameSi || item.productName;
-                    // 🌟 [PACKAGE CHECK] Package එකක්දැයි හඳුනා ගැනීම
                     const isPackage = printedItemName.includes('{') && printedItemName.includes('}');
                     
                     const displayPrice = Number(extItem.displayPrice || extItem.originalPrice || item.unitPrice || 0);
@@ -289,23 +288,27 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                     const hasPriceGap = !isPackage && displayPrice > ourPrice;
 
                     // ══════════════════════════════════════════════════════════
-                    // 🌟 [PACKAGE ROW] Package sub-items <ul> bullet list එකක් ලෙස render කිරීම
+                    // 🌟 [PACKAGE ROW] Preview එක සඳහා නිවැරදි React JSX සැකසුම
                     // ══════════════════════════════════════════════════════════
                     if (isPackage) {
                       const [mainTitlePart, subPart] = printedItemName.split('{');
-                      // 🌟 [Items: X] ඉවත් කර පිරිසිදු නම ලබා ගැනීම
                       const cleanMainTitle = mainTitlePart.replace(/\[Items:\s*\d+\]/gi, '').trim();
                       const subItemsList = subPart ? subPart.replace('}', '').trim() : '';
                       const subItemsArray = subItemsList.split('•').map((s) => s.trim()).filter(Boolean);
 
-                      // 🌟 Package code එක [CODE] ලෙස ඉදිරියෙන් දැක්වීම
                       const pkgCode = (extItem as any).barcode || (extItem as any).no || (extItem as any).searchKey || '';
                       const hasCodeInTitle = cleanMainTitle.startsWith('[') && cleanMainTitle.includes(']');
+                      
+                      const displayPriceText = ourPrice > displayPrice ? '-' : formatPrice(displayPrice);
+                      const salesPriceText = formatPrice(ourPrice);
+                      const displayQty = Number(item.quantity) % 1 === 0
+                        ? Number(item.quantity).toString()
+                        : Number(item.quantity).toFixed(3).replace(/\.?0+$/, '');
 
                       return (
-                        <div key={item.id} style={{ borderBottom: '1px dashed #000', padding: '5px 0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '6px', width: '100%', boxSizing: 'border-box' }}>
-                          <div style={{ flex: 1, minWidth: 0, maxWidth: 'calc(100% - 85px)', paddingRight: '4px' }}>
-                            <div style={{ fontWeight: 900, fontSize: '13px', color: '#000', lineHeight: 1.2, marginBottom: '2px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                        <div key={item.id} style={{ borderBottom: '1px dashed #000', padding: '5px 0' }}>
+                          <div style={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: '100%' }}>
+                            <div style={{ fontWeight: 900, fontSize: '14px', color: '#000', lineHeight: 1.25, marginBottom: '3px' }}>
                               {pkgCode && !hasCodeInTitle && (
                                 <span style={{ fontFamily: "'Courier New', monospace", fontSize: '11px', background: '#000', color: '#fff', padding: '1px 4px', borderRadius: '2px', marginRight: '4px' }}>
                                   [{pkgCode}]
@@ -313,17 +316,36 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                               )}
                               {cleanMainTitle}
                             </div>
+                            
+                            {/* 🌟 Sub-items list ලෙස JSX මඟින් පිරිසිදුව පෙන්වීම */}
                             {subItemsArray.length > 0 && (
-                              <ul style={{ fontSize: '10px', fontWeight: 700, color: '#222', lineHeight: 1.25, margin: '2px 0 0 14px', padding: 0, listStyleType: 'disc', whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                {subItemsArray.map((sub, sIdx) => (
-                                  <li key={sIdx} style={{ marginBottom: '2px' }}>{sub}</li>
-                                ))}
-                              </ul>
+                              <div style={{ marginBottom: '4px' }}>
+                                {subItemsArray.map((subStr, sIdx) => {
+                                  const qtyMatch = subStr.match(/\([xX](\d+(\.\d+)?)\)/);
+                                  const subQty = qtyMatch ? qtyMatch[1] : '1';
+                                  const cleanItemName = subStr.replace(/\([xX]\d+(\.\d+)?\)/g, '').trim();
+
+                                  return (
+                                    <div key={sIdx} style={{ marginTop: '2px', marginBottom: '2px' }}>
+                                      <div style={{ fontSize: '11px', fontWeight: 400, color: '#222', lineHeight: 1.2, paddingLeft: '4px' }}>
+                                        • {cleanItemName}
+                                      </div>
+                                      <div style={{ display: 'flex', fontSize: '11px', fontWeight: 400, fontFamily: 'Courier New, monospace', color: '#000', width: '100%' }}>
+                                        <span style={{ width: '12%', textAlign: 'center', flexShrink: 0 }}>{subQty}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
-                          <div style={{ width: '80px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'flex-start', gap: '4px', flexShrink: 0, ...mono, color: '#000', paddingTop: '2px' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#333', whiteSpace: 'nowrap' }}>Qty: {item.quantity}</span>
-                            <span style={{ fontSize: '15px', fontWeight: 900, whiteSpace: 'nowrap' }}>{formatPrice(lineTotal)}</span>
+
+                          {/* 🌟 Package Bottom Total Row */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 900, fontFamily: 'Courier New, monospace', color: '#000', width: '100%', marginTop: '4px' }}>
+                            <span style={{ width: '12%', textAlign: 'center', flexShrink: 0 }}>{displayQty}</span>
+                            <span style={{ width: '18%', textAlign: 'right', paddingRight: '6px', flexShrink: 0, ...(ourPrice < displayPrice ? { textDecoration: 'line-through' } : {}) }}>{displayPriceText}</span>
+                            <span style={{ width: '18%', textAlign: 'right', flexShrink: 0 }}>{salesPriceText}</span>
+                            <span style={{ width: '22%', textAlign: 'right', flexShrink: 0 }}>{formatPrice(lineTotal)}</span>
                           </div>
                         </div>
                       );
@@ -353,8 +375,7 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
                     );
                   })}
                 </div>
-
-
+                
                 {/* ═══ TOTALS ═══ */}
                 <div style={{ borderTop: '2px solid #000', paddingTop: '4px', marginTop: '2px' }}>
                   {discountAmount > 0 && (

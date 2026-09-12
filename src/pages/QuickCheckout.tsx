@@ -155,18 +155,149 @@ export const QuickCheckout: React.FC = () => {
     });
     return idx;
   }, [inventoryItems]);
-  // ── Conditional inline-edit tracking state ──
-  const [editingCell, setEditingCell] = useState<{ itemId: string; field: 'salesPrice' | 'quantity' } | null>(null);
+  // ── Conditional inline-edit tracking state (Added 'storeQty' & 'subItem') ──
+  const [editingCell, setEditingCell] = useState<{ itemId: string; field: 'productName' | 'salesPrice' | 'quantity' | 'storeQty' | 'subItem'; subIndex?: number } | null>(null);
   const inlineEditInputRef = useRef<HTMLInputElement>(null);
   const [inlineEditStr, setInlineEditStr] = useState<string>('');
+  // 🌟 [CARET-ON-CLICK] Text එකක් click කරන විට, cursor එක exactly click කළ තැනටම යොමු කිරීම සඳහා
+  // click coordinates වලින් ගණනය කරන character offset එක තාවකාලිකව ගබඩා කරයි (Highlight/select() නොවී)
+  const pendingCaretOffsetRef = useRef<number | null>(null);
 
-  // Focus and select all when entering inline edit mode
+  // 🌟 Mouse click coordinate එකෙන් (x,y) ඇති text node එකේ character offset එක ගණනය කිරීම
+  const getCaretOffsetFromClick = useCallback((e: React.MouseEvent<HTMLElement>): number => {
+    const x = e.clientX;
+    const y = e.clientY;
+    try {
+      if (typeof document.caretRangeFromPoint === 'function') {
+        const range = document.caretRangeFromPoint(x, y);
+        if (range) return range.startOffset;
+      } else if (typeof (document as any).caretPositionFromPoint === 'function') {
+        const pos = (document as any).caretPositionFromPoint(x, y);
+        if (pos) return pos.offset;
+      }
+    } catch {
+      // Fall through to default below (e.g. unsupported browser API)
+    }
+    return 0;
+  }, []);
+
+  // 🌟 Package sub-item නම් "• " bullet prefix එකක් සමඟ පෙන්වන නිසා, click කළේ bullet එක මතද
+  // නැත්නම් සත්‍ය නම් text එක මතද යන්න check කර, නිවැරදි character offset එක ලබා දෙයි
+  const getSubItemCaretOffsetFromClick = useCallback((e: React.MouseEvent<HTMLElement>, text: string): number => {
+    try {
+      let node: Node | null = null;
+      let offset = 0;
+      if (typeof document.caretRangeFromPoint === 'function') {
+        const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+        if (range) { node = range.startContainer; offset = range.startOffset; }
+      } else if (typeof (document as any).caretPositionFromPoint === 'function') {
+        const pos = (document as any).caretPositionFromPoint(e.clientX, e.clientY);
+        if (pos) { node = pos.offsetNode; offset = pos.offset; }
+      }
+      if (node && node.nodeType === Node.TEXT_NODE) {
+        const nodeText = node.textContent || '';
+        // Clicked on the "• " bullet prefix (a separate text node) — treat as start of the name
+        if (/^•\s*$/.test(nodeText)) {
+          return 0;
+        }
+        return Math.max(0, Math.min(offset, text.length));
+      }
+    } catch {
+      // Fall through to default below (e.g. unsupported browser API)
+    }
+    return 0;
+  }, []);
+
+  // 🌟 Stock Edit Logic: Cart එකේදීම අදාළ භාණ්ඩයේ/Package එකේ Store Stock ප්‍රමාණය වෙනස් කිරීම
+  const commitCartItemStock = useCallback((itemId: string) => {
+    const rawStock = parseInt(inlineEditStr, 10);
+    if (!isNaN(rawStock) && rawStock >= 0) {
+      setItems(prev => prev.map(i => {
+        if (i.id === itemId) {
+          return { ...i, storeQty: rawStock };
+        }
+        return i;
+      }));
+      toast.success('Stock quantity updated in cart');
+    }
+    setEditingCell(null);
+  }, [inlineEditStr]);
+
+// 🌟 [INLINE EDIT FOCUS FIXED] Input එක mount වූ විගස focus කර, productName/subItem සඳහා
+  // cursor එක click කළ ස්ථානයටම (pendingCaretOffsetRef) යොමු කරයි — full-text highlight නොකරමින්.
+  // අනිත් fields (salesPrice/storeQty/quantity) සඳහා පෙර පැවති select() හැසිරීමම පවත්වා ගනී.
   useEffect(() => {
     if (editingCell && inlineEditInputRef.current) {
-      inlineEditInputRef.current.focus();
-      inlineEditInputRef.current.select();
+      const inputEl = inlineEditInputRef.current;
+      inputEl.focus();
+      if (editingCell.field !== 'productName' && editingCell.field !== 'subItem') {
+        inputEl.select();
+      } else {
+        // Highlight නොකර, ගණනය කළ click position එකේ cursor එක තැබීම
+        const len = inputEl.value.length;
+        let offset = pendingCaretOffsetRef.current;
+        offset = offset === null || Number.isNaN(offset) ? len : Math.max(0, Math.min(offset, len));
+        inputEl.setSelectionRange(offset, offset);
+        pendingCaretOffsetRef.current = null;
+      }
     }
   }, [editingCell]);
+
+  // 🌟 Name Edit Logic: Cart එකේ භාණ්ඩයේ නම වෙනස් කිරීම (onBlur ඉවත් කර ඇත)
+  const commitCartItemName = useCallback((itemId: string) => {
+    const sanitizedName = inlineEditStr.trim();
+    if (sanitizedName) {
+      setItems(prev => prev.map(i => {
+        if (i.id === itemId) {
+          const rawName = isSinhala ? (i.productNameSi || i.productName) : i.productName;
+          let newFullName = sanitizedName;
+          let newFullNameSi = sanitizedName;
+
+          if (rawName.includes('{') && rawName.includes('}')) {
+            const openIdx = rawName.indexOf('{');
+            const subItems = rawName.slice(openIdx);
+            newFullName = `${sanitizedName} ${subItems}`;
+            newFullNameSi = `${sanitizedName} ${subItems}`;
+          }
+          return { ...i, productName: newFullName, productNameSi: newFullNameSi };
+        }
+        return i;
+      }));
+    }
+    setEditingCell(null);
+  }, [inlineEditStr, isSinhala]);
+
+  // 🌟 Sub-Item Name Edit Logic: Package එකක් ඇතුළේ තියෙන බඩුවක නම වෙනස් කිරීම (onBlur ඉවත් කර ඇත)
+  const commitCartItemSubName = useCallback((itemId: string, subIndex: number) => {
+    const sanitizedName = inlineEditStr.trim();
+    if (sanitizedName) {
+      setItems(prev => prev.map(i => {
+        if (i.id === itemId) {
+          const rawName = isSinhala ? (i.productNameSi || i.productName) : i.productName;
+          if (rawName.includes('{') && rawName.includes('}')) {
+            const openIdx = rawName.indexOf('{');
+            const closeIdx = rawName.lastIndexOf('}');
+            const mainTitle = rawName.slice(0, openIdx);
+            const subItemsStr = rawName.slice(openIdx + 1, closeIdx);
+            const subItemsArray = subItemsStr.split('•').map(s => s.trim()).filter(Boolean);
+
+            if (subItemsArray[subIndex]) {
+              const oldSub = subItemsArray[subIndex];
+              const qtyMatch = oldSub.match(/\([xX]\d+(\.\d+)?\)/);
+              const qtyPart = qtyMatch ? ` ${qtyMatch[0]}` : '';
+              
+              subItemsArray[subIndex] = `${sanitizedName}${qtyPart}`;
+              const newFullName = `${mainTitle}{ ${subItemsArray.join(' • ')} }`;
+              
+              return { ...i, productName: newFullName, productNameSi: newFullName };
+            }
+          }
+        }
+        return i;
+      }));
+    }
+    setEditingCell(null);
+  }, [inlineEditStr, isSinhala]);
 
   // ── In-place Edit mode via query param ──
   const editInvoiceId = searchParams.get('edit');
@@ -492,6 +623,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [activeCategoryPopover, clampPopoverPosition]);
+  
 
   // Fix: initial unmounted-popover spawn overflow.
   // At click time (see onClick handler above) categoryPopoverRef.current is
@@ -1953,7 +2085,9 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
 
         case 'Escape':
           e.preventDefault();
-          if (showShortcutMap) {
+          if (editingCell) {
+            setEditingCell(null);
+          } else if (showShortcutMap) {
             setShowShortcutMap(false);
           } else if (isQuickAddMode) {
             setIsQuickAddMode(false);
@@ -2149,6 +2283,49 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
       }
     }
   }, [selectedProductIndex]);
+
+ // 🌟 [UPDATED: OUTSIDE CLICK LISTENER] Input එක, එහි text එක, හෝ අදාළ Cart Item/Package Box
+  // එක ඇතුළේ click කළහොත් close නොවීම සඳහා — box එකෙන් සම්පූර්ණයෙන්ම පිටත mousedown කළහොත් පමණක් වැසේ
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      if (!editingCell) return;
+
+      const target = e.target as HTMLElement;
+
+      // 🌟 [BOX-LEVEL CONTAINMENT] Input එක edit වෙමින් පවතින item එකට අදාළ row (box) එක සොයාගැනීම.
+      // Click කළේ එම box එක ඇතුළේ (input එක ඇතුළුව) නම්, ඕනෑම තැනක වුවත් close නොකරයි.
+      const rowIndex = items.findIndex(i => i.id === editingCell.itemId);
+      const boxEl = rowIndex >= 0 ? cartItemRefs.current.get(rowIndex) : undefined;
+
+      if (
+        (boxEl && boxEl.contains(target)) ||
+        (inlineEditInputRef.current && inlineEditInputRef.current.contains(target))
+      ) {
+        return;
+      }
+
+      // කුඩා timeout එකක් මඟින් click event එක සම්පූර්ණ වීමට ඉඩ හැරීම
+      setTimeout(() => {
+        if (!(boxEl && boxEl.contains(target))) {
+          if (editingCell.field === 'productName') {
+            commitCartItemName(editingCell.itemId);
+          } else if (editingCell.field === 'subItem' && editingCell.subIndex !== undefined) {
+            commitCartItemSubName(editingCell.itemId, editingCell.subIndex);
+          } else if (editingCell.field === 'salesPrice') {
+            commitCartItemPrice(editingCell.itemId);
+          } else if (editingCell.field === 'storeQty') {
+            commitCartItemStock(editingCell.itemId);
+          }
+        }
+      }, 10);
+    };
+
+    // 🌟 Event Listener එක Capture Phase එකේදී (true) ධාවනය කිරීම මගින් අනිත් click events ඊට පෙර ධාවනය වීම වළක්වයි
+    document.addEventListener('mousedown', handleGlobalClick, true);
+    return () => {
+      document.removeEventListener('mousedown', handleGlobalClick, true);
+    };
+  }, [editingCell, items, commitCartItemName, commitCartItemSubName, commitCartItemPrice, commitCartItemStock]);
 
   // Auto-scroll category popover active item into view
   useEffect(() => {
@@ -3329,6 +3506,16 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                             }}
                             tabIndex={0}
                             onClick={(e) => {
+                              // 🌟 [FIX] Cart item box එකේ row-level click handler එක, දැනට open ව ඇති
+                              // inline-edit input එක ඇතුළේ cursor reposition කිරීමට click කරන විටත් fire වී,
+                              // document.activeElement.blur() මගින් edit කරමින් සිටින input එකේ focus එක
+                              // ඉවත් කරයි (input එක state එකෙන් open වුවත් "disabled" වගේ පෙනේ).
+                              // දැනට edit වෙමින් පවතින input එකක් තුළම click කළොත්, row-selection logic
+                              // සම්පූර්ණයෙන්ම skip කර, input එකේ native focus/cursor හැසිරීම එලෙසම තබා ගනී.
+                              const clickedInsideActiveEditInput = !!(e.target as HTMLElement).closest('input');
+                              if (clickedInsideActiveEditInput) {
+                                return;
+                              }
                               e.preventDefault();
                               setIsCartFocused(true);
                               setSelectedCartIndex(index);
@@ -3357,67 +3544,143 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                               const rawName = isSinhala ? (item.productNameSi || item.productName) : item.productName;
                               const isPkg = rawName.includes('{') && rawName.includes('}');
 
-                              // ══════════════════════════════════════════════════════════
-                              // PACKAGE ROW — name + sub-items span Product/Cost/Last/
-                              // Sales/Display as one wide block (grid-column: span 5).
-                              // Stock/Qty/Subtotal stay in their normal grid cells below.
-                              // ══════════════════════════════════════════════════════════
-                              // ══════════════════════════════════════════════════════════
-                              // PACKAGE ROW — name + line-by-line <ul> sub-items spanning cols 1 to 5
-                              // ══════════════════════════════════════════════════════════
+                              let displayTitle = rawName;
+                              let pkgSubItems: string[] = [];
+
                               if (isPkg) {
                                 const openIdx = rawName.indexOf('{');
                                 const closeIdx = rawName.lastIndexOf('}');
-                                const pkgTitle = openIdx > -1 ? rawName.slice(0, openIdx).trim() : rawName;
+                                displayTitle = openIdx > -1 ? rawName.slice(0, openIdx).trim() : rawName;
                                 const rawSubList = openIdx > -1 && closeIdx > openIdx ? rawName.slice(openIdx + 1, closeIdx).trim() : '';
-                                const pkgSubItems = rawSubList
-                                  ? rawSubList.split('•').map((s) => s.trim()).filter(Boolean)
-                                  : [];
-
-                                return (
-                                  <div className="min-w-0 py-1.5 pr-2" style={{ gridColumn: 'span 5 / span 5' }}>
-                                    <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
-                                      <p className={`text-sm font-bold leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                        {pkgTitle}
-                                      </p>
-                                    </ProductNameTooltip>
-                                    {pkgSubItems.length > 0 && (
-                                      <ul className={`mt-1 pl-4 list-disc space-y-0.5 text-xs leading-snug ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                        {pkgSubItems.map((sub, sIdx) => (
-                                          <li key={sIdx} className="break-words">
-                                            {sub}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    )}
-                                  </div>
-                                );
+                                pkgSubItems = rawSubList ? rawSubList.split('•').map((s) => s.trim()).filter(Boolean) : [];
                               }
 
-                              // ══════════════════════════════════════════════════════════
-                              // STANDARD PRODUCT ROW — Product, Cost, Last, Sales, Display
-                              // render as 5 independent grid columns.
-                              // ══════════════════════════════════════════════════════════
                               return (
                                 <>
-                                  <div className="min-w-0 py-1">
-                                    <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
-                                      <p className={`text-sm font-semibold truncate leading-snug ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                        {rawName}
-                                      </p>
-                                    </ProductNameTooltip>
+                                  {/* ── 1. PRODUCT NAME COLUMN (Package වලදී Cost & Last තීරු 2ක ඉඩද රැගෙන span 3 ලෙස දිගට පෙන්වීම) ── */}
+                                  <div 
+                                    className="min-w-0 py-1 pr-3"
+                                    style={isPkg ? { gridColumn: 'span 3 / span 3' } : undefined}
+                                  >
+                                    {editingCell?.itemId === item.id && editingCell?.field === 'productName' ? (
+                                      <input
+                                        ref={inlineEditInputRef}
+                                        type="text"
+                                        className={`w-full font-bold bg-transparent border-b border-amber-500/70 rounded-none px-0 py-0.5 focus:outline-none text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}
+                                        value={inlineEditStr}
+                                        onChange={(e) => setInlineEditStr(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                                            e.stopPropagation();
+                                          } else if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            commitCartItemName(item.id);
+                                          }
+                                        }}
+                                        // 🌟 onBlur ඉවත් කරන ලදී. දැන් පිටත click කළහොත් පමණක් save වී වැසේ
+                                      />
+                                    ) : (
+                                      <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
+                                        <p 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            // 🌟 දැනටමත් මෙම cell එක edit වෙමින් පවතී නම් නැවත reset වීම වළක්වයි
+                                            if (editingCell?.itemId !== item.id || editingCell?.field !== 'productName') {
+                                              // 🌟 [CARET-ON-CLICK] click කළ ස්ථානයේ character offset එක ගණනය කර ගබඩා කිරීම
+                                              // (displayTitle එකට අදාළව — pkgSubItems text එක header එකේ නොපෙන්වන නිසා)
+                                              const clickOffset = getCaretOffsetFromClick(e);
+                                              pendingCaretOffsetRef.current = Math.max(0, Math.min(clickOffset, displayTitle.length));
+                                              setEditingCell({ itemId: item.id, field: 'productName' });
+                                              setInlineEditStr(displayTitle);
+                                            }
+                                          }}
+                                          className={`text-sm font-semibold truncate leading-snug cursor-text hover:underline decoration-dashed underline-offset-4 ${isDark ? 'text-white' : 'text-slate-900'}`}
+                                          title={t('quickCheckout.editNameTooltip', 'Click to edit item name (e.g. remove brand)')}
+                                        >
+                                          {/* 🌟 [CLEANED HEADER] Package sub-items list එක පහළින් වෙනම පෙන්වන නිසා,
+                                              හිස් නම් line එකේ full rawName ({...} suffix එක සමඟ) නොපෙන්වා, displayTitle (clean name) පමණක් පෙන්වයි */}
+                                          {displayTitle}
+                                        </p>
+                                      </ProductNameTooltip>
+                                    )}
+
+                                    {/* 🌟 Sub-items: Click කර ඕනෑම අයිතමයක නමක් මෙතැනදීම Edit කිරීමට හැකිවීම (Highlight නොවී, Cursor එකෙන් Arrow keys සහිතව) */}
+                                    {pkgSubItems.length > 0 && (
+                                      <div className="mt-1.5 space-y-1 pl-1">
+                                        {pkgSubItems.map((sub, sIdx) => {
+                                          const qtyMatch = sub.match(/\([xX](\d+(\.\d+)?)\)/);
+                                          const subQty = qtyMatch ? qtyMatch[1] : '1';
+                                          const cleanItemName = sub.replace(/\([xX]\d+(\.\d+)?\)/g, '').trim();
+
+                                          return (
+                                            <div key={sIdx} className="flex items-center gap-2 text-sm font-normal">
+                                              {editingCell?.itemId === item.id && editingCell?.field === 'subItem' && editingCell?.subIndex === sIdx ? (
+                                                <input
+                                                  ref={inlineEditInputRef}
+                                                  type="text"
+                                                  className={`flex-1 font-normal bg-transparent border-b border-amber-500/70 rounded-none px-0 py-0.5 focus:outline-none text-sm ${isDark ? 'text-slate-200' : 'text-slate-800'}`}
+                                                  value={inlineEditStr}
+                                                  onChange={(e) => setInlineEditStr(e.target.value)}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                                                      e.stopPropagation();
+                                                    } else if (e.key === 'Enter') {
+                                                      e.preventDefault();
+                                                      commitCartItemSubName(item.id, sIdx);
+                                                    }
+                                                  }}
+                                                  // 🌟 onBlur ඉවත් කරන ලදී.
+                                                />
+                                              ) : (
+                                                <span 
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    // 🌟 දැනටමත් මෙම sub-item එක edit වෙමින් පවතී නම් නැවත reset වීම වළක්වයි
+                                                    if (editingCell?.itemId !== item.id || editingCell?.field !== 'subItem' || editingCell?.subIndex !== sIdx) {
+                                                      // 🌟 [CARET-ON-CLICK] click කළ ස්ථානයේ character offset එක ගණනය කර ගබඩා කිරීම
+                                                      pendingCaretOffsetRef.current = getSubItemCaretOffsetFromClick(e, cleanItemName);
+                                                      setEditingCell({ itemId: item.id, field: 'subItem', subIndex: sIdx });
+                                                      setInlineEditStr(cleanItemName);
+                                                    }
+                                                  }}
+                                                  className={`${isDark ? 'text-slate-300' : 'text-slate-700'} truncate cursor-text hover:underline decoration-dashed underline-offset-4`}
+                                                  title={t('quickCheckout.editNameTooltip', 'Click to edit sub-item name')}
+                                                >
+                                                  • {cleanItemName}
+                                                </span>
+                                              )}
+                                              <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono flex-shrink-0 ${
+                                                isDark 
+                                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                                                  : 'bg-amber-100 text-amber-800 border border-amber-200'
+                                              }`}>
+                                                {subQty}×
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
-                                  <div className="text-right truncate">
-                                    <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                                      {Number(item.cost || 0).toFixed(2)}
-                                    </span>
-                                  </div>
-                                  <div className="text-right truncate">
-                                    <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                      {Number(item.lastPrice || 0).toFixed(2)}
-                                    </span>
-                                  </div>
-                                  <div className="text-right truncate">
+
+                                  {/* ── 2 & 3. COST & LAST COLUMNS (සාමාන්‍ය භාණ්ඩ සඳහා පමණක් පෙන්වයි. Package වලදී ඉහත span 3 මඟින් මෙම ඉඩ ලබා ගනී) ── */}
+                                  {!isPkg && (
+                                    <>
+                                      <div className="text-right truncate self-start pt-1.5">
+                                        <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                          {Number(item.cost || 0).toFixed(2)}
+                                        </span>
+                                      </div>
+                                      <div className="text-right truncate self-start pt-1.5">
+                                        <span className={`text-sm font-mono font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                          {Number(item.lastPrice || 0).toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {/* ── 4. SALES PRICE COLUMN (Editable) ── */}
+                                  <div className="text-right truncate self-start pt-1">
                                     {editingCell?.itemId === item.id && editingCell?.field === 'salesPrice' ? (
                                       <input
                                         ref={inlineEditInputRef}
@@ -3429,18 +3692,14 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                             : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
                                           }`}
                                         value={inlineEditStr}
-                                        onChange={(e) => {
-                                          setInlineEditStr(e.target.value);
-                                        }}
+                                        onChange={(e) => setInlineEditStr(e.target.value)}
                                         onKeyDown={(e) => {
                                           if (e.key === 'Enter') {
                                             e.preventDefault();
                                             commitCartItemPrice(item.id);
                                           }
                                         }}
-                                        onBlur={() => {
-                                          commitCartItemPrice(item.id);
-                                        }}
+                                        onBlur={() => commitCartItemPrice(item.id)}
                                       />
                                     ) : (
                                       <span
@@ -3451,30 +3710,68 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                         }}
                                         className={`cursor-pointer hover:bg-amber-500/10 rounded px-1 -mx-1 transition-colors text-sm font-mono font-bold tabular-nums ${isDark ? 'text-amber-400' : 'text-amber-600'
                                           }`}
+                                        title="Click to edit sales price"
                                       >
                                         {Number(item.salesPrice || item.ourPrice || 0).toFixed(2)}
                                       </span>
                                     )}
                                   </div>
-                                  <div className="text-right truncate">
-                                    {Number(item.salesPrice || item.ourPrice || 0) > Number(item.displayPrice || 0) ? (
-                                      <span className={`text-sm font-mono line-through opacity-40 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+
+                                  {/* ── 5. DISPLAY PRICE COLUMN ── */}
+                                  <div className="text-right truncate self-start pt-1.5">
+                                    {Number(item.salesPrice || item.ourPrice || 0) < Number(item.displayPrice || 0) ? (
+                                      <span className={`text-sm font-bold font-mono ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
                                         {Number(item.displayPrice || 0).toFixed(2)}
                                       </span>
                                     ) : (
-                                      <span className={`text-sm font-bold font-mono ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>
+                                      <span className={`text-sm font-mono line-through opacity-40 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                                         {Number(item.displayPrice || 0).toFixed(2)}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* ── 6. STOCK COLUMN (Editable inline for both normal items & packages) ── */}
+                                  <div className="text-center truncate self-start pt-1">
+                                    {editingCell?.itemId === item.id && editingCell?.field === 'storeQty' ? (
+                                      <input
+                                        ref={inlineEditInputRef}
+                                        type="number"
+                                        min="0"
+                                        className={`w-14 font-bold text-center rounded border py-0.5 focus:outline-none text-xs tabular-nums ${isDark
+                                            ? 'bg-slate-800 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
+                                            : 'bg-white text-amber-700 border-amber-400 ring-1 ring-amber-200'
+                                          }`}
+                                        value={inlineEditStr}
+                                        onChange={(e) => setInlineEditStr(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            commitCartItemStock(item.id);
+                                          }
+                                        }}
+                                        onBlur={() => commitCartItemStock(item.id)}
+                                      />
+                                    ) : (
+                                      <span
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingCell({ itemId: item.id, field: 'storeQty' });
+                                          setInlineEditStr(String(item.storeQty ?? 0));
+                                        }}
+                                        className={`cursor-pointer hover:bg-amber-500/10 rounded px-1.5 py-0.5 text-sm font-mono font-semibold transition-colors ${
+                                          item.storeQty !== undefined && item.storeQty < 10 
+                                            ? 'text-amber-500 font-bold animate-pulse' 
+                                            : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                                        }`}
+                                        title="Click to edit stock quantity"
+                                      >
+                                        {item.storeQty !== undefined && item.storeQty !== null ? item.storeQty : '-'}
                                       </span>
                                     )}
                                   </div>
                                 </>
                               );
                             })()}
-                            <div className="text-center truncate">
-                              <span className={`text-sm font-mono font-semibold ${item.storeQty !== undefined && item.storeQty < 10 ? 'text-amber-500 font-bold animate-pulse' : isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                {item.storeQty !== undefined && item.storeQty !== null ? item.storeQty : '-'}
-                              </span>
-                            </div>
                             {/* ══════ INLINE QUANTITY — click-to-edit toggle ── REFACTORED ── */}
                             <div className="flex justify-center items-center">
                               {editingCell?.itemId === item.id && editingCell?.field === 'quantity' ? (
