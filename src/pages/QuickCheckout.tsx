@@ -95,13 +95,13 @@ const sanitizeProductId = (productId: string | undefined | null): string | null 
 
 // 🌟 [PACKAGE FORMATTER] [Items: X] වෙනුවට Package Code එක [CODE] ලෙස ඉදිරියෙන් හෝ නම සමඟ එක් කිරීම
 const formatPackageDisplayName = (name: string, packageItems?: any[], packageCode?: string): string => {
-    if (!packageItems || !Array.isArray(packageItems) || packageItems.length === 0) {
-      return name;
-    }
-    const codeTag = packageCode ? `[${packageCode}] ` : '';
-    const itemsList = packageItems.map((i: any) => `• ${i.name || i.productName || 'Item'} (x${i.qty || i.quantity || 1})`).join(' ');
-    return `${codeTag}${name} {${itemsList}}`;
-  };
+  if (!packageItems || !Array.isArray(packageItems) || packageItems.length === 0) {
+    return name;
+  }
+  const codeTag = packageCode ? `[${packageCode}] ` : '';
+  const itemsList = packageItems.map((i: any) => `• ${i.name || i.productName || 'Item'} (x${i.qty || i.quantity || 1})`).join(' ');
+  return `${codeTag}${name} {${itemsList}}`;
+};
 
 // 🌟 [TOTAL ITEMS COUNT HELPER] Cart එකේ සහ Bills වල Sub-items count එක {} තුළින් ගණනය කර ගැනීම
 export const calculateTotalItemCount = (cartItems: QuickInvoiceItem[]): number => {
@@ -112,7 +112,7 @@ export const calculateTotalItemCount = (cartItems: QuickInvoiceItem[]): number =
       const closeIdx = rawName.lastIndexOf('}');
       const subItemsStr = rawName.slice(openIdx + 1, closeIdx);
       const subItemsMatches = subItemsStr.match(/\(x(\d+)\)/g);
-      
+
       let packageSubTotal = 0;
       if (subItemsMatches) {
         packageSubTotal = subItemsMatches.reduce((subSum, matchStr) => {
@@ -223,7 +223,7 @@ export const QuickCheckout: React.FC = () => {
     setEditingCell(null);
   }, [inlineEditStr]);
 
-// 🌟 [INLINE EDIT FOCUS FIXED] Input එක mount වූ විගස focus කර, productName/subItem සඳහා
+  // 🌟 [INLINE EDIT FOCUS FIXED] Input එක mount වූ විගස focus කර, productName/subItem සඳහා
   // cursor එක click කළ ස්ථානයටම (pendingCaretOffsetRef) යොමු කරයි — full-text highlight නොකරමින්.
   // අනිත් fields (salesPrice/storeQty/quantity) සඳහා පෙර පැවති select() හැසිරීමම පවත්වා ගනී.
   useEffect(() => {
@@ -285,10 +285,10 @@ export const QuickCheckout: React.FC = () => {
               const oldSub = subItemsArray[subIndex];
               const qtyMatch = oldSub.match(/\([xX]\d+(\.\d+)?\)/);
               const qtyPart = qtyMatch ? ` ${qtyMatch[0]}` : '';
-              
+
               subItemsArray[subIndex] = `${sanitizedName}${qtyPart}`;
               const newFullName = `${mainTitle}{ ${subItemsArray.join(' • ')} }`;
-              
+
               return { ...i, productName: newFullName, productNameSi: newFullName };
             }
           }
@@ -442,7 +442,7 @@ export const QuickCheckout: React.FC = () => {
   // ── LIVE SYNC: session pairing code shared between Admin & Cashier terminals ──
   // Persisted per-browser so a terminal reconnecting (refresh / crash) rejoins
   // the same room automatically instead of losing its pairing.
-const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
+  const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
   const [sessionCode, setSessionCode] = useState<string>(() => {
     try {
       return localStorage.getItem('pos_terminal_session_code') || 'SHOP';
@@ -453,11 +453,11 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
   const [showSessionCodeEditor, setShowSessionCodeEditor] = useState(false);
   // ── QUADRUPLE CHECKBOX FILTER STATES ──
   // searchByKey:     match against product.searchKey  (default ON)
-  // searchBarcode:   match against product.barcode    (default ON — must be strictly true by default)
+  // searchBarcode:   match against product.barcode    (default OFF)
   // searchByName:    match against product.name       (default OFF)
-  // searchByNo:      match against product.no         (default OFF)
+  // searchByNo:      match against product.no         (default ON)
   const [searchByKey, setSearchByKey] = useState<boolean>(true);
-  const [searchBarcode, setSearchBarcode] = useState<boolean>(true);
+  const [searchBarcode, setSearchBarcode] = useState<boolean>(false); // 🌟 [FIX] Barcode default unticked
   const [searchByName, setSearchByName] = useState<boolean>(false);
   const [searchByNo, setSearchByNo] = useState<boolean>(true);
 
@@ -623,7 +623,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [activeCategoryPopover, clampPopoverPosition]);
-  
+
 
   // Fix: initial unmounted-popover spawn overflow.
   // At click time (see onClick handler above) categoryPopoverRef.current is
@@ -1013,30 +1013,30 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
         return;
       }
       // 🌟 Format title if item is a package bundle with Package Code [CODE]
-    const isPkg = (masterProduct as any)?.isPackage;
-    const pkgSubItems = (masterProduct as any)?.packageItems;
-    const pkgCode = (masterProduct as any)?.searchKey || (masterProduct as any)?.no || (masterProduct as any)?.barcode || '';
-    const finalTitle = isPkg ? formatPackageDisplayName(flatProduct.displayName, pkgSubItems, pkgCode) : flatProduct.displayName;
-    const finalTitleSi = isPkg ? formatPackageDisplayName(flatProduct.product.nameAlt || flatProduct.displayName, pkgSubItems, pkgCode) : (flatProduct.product.nameAlt || flatProduct.displayName);
+      const isPkg = (masterProduct as any)?.isPackage;
+      const pkgSubItems = (masterProduct as any)?.packageItems;
+      const pkgCode = (masterProduct as any)?.searchKey || (masterProduct as any)?.no || (masterProduct as any)?.barcode || '';
+      const finalTitle = isPkg ? formatPackageDisplayName(flatProduct.displayName, pkgSubItems, pkgCode) : flatProduct.displayName;
+      const finalTitleSi = isPkg ? formatPackageDisplayName(flatProduct.product.nameAlt || flatProduct.displayName, pkgSubItems, pkgCode) : (flatProduct.product.nameAlt || flatProduct.displayName);
 
-    const newItem: QuickInvoiceItem = {
-      id: `item-${Date.now()}`,
-      productId: flatProduct.flatId,
-      productName: finalTitle,
-      productNameSi: finalTitleSi,
-      variantId: flatProduct.variant?.id,
-      size: flatProduct.variant?.size,
-      quantity: 1,
-      unitPrice: ourPriceVal,
-      originalPrice: displayPriceVal,
-      total: ourPriceVal,
-      cost: costVal,
-      lastPrice: lastPriceVal,
-      salesPrice: ourPriceVal,
-      displayPrice: displayPriceVal,
-      ourPrice: ourPriceVal,
-      storeQty: storeQtyVal,
-    };
+      const newItem: QuickInvoiceItem = {
+        id: `item-${Date.now()}`,
+        productId: flatProduct.flatId,
+        productName: finalTitle,
+        productNameSi: finalTitleSi,
+        variantId: flatProduct.variant?.id,
+        size: flatProduct.variant?.size,
+        quantity: 1,
+        unitPrice: ourPriceVal,
+        originalPrice: displayPriceVal,
+        total: ourPriceVal,
+        cost: costVal,
+        lastPrice: lastPriceVal,
+        salesPrice: ourPriceVal,
+        displayPrice: displayPriceVal,
+        ourPrice: ourPriceVal,
+        storeQty: storeQtyVal,
+      };
       setItems([...items, newItem]);
     }
 
@@ -1084,31 +1084,31 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
         toast.error(`${t('quickCheckout.insufficientStock')}: ${storeQtyVal} ${t('invoice.available')}`);
         return;
       }
-      
-      // 🌟 Format title if item is a package bundle
-    const isPkg = (masterProduct as any)?.isPackage;
-    const pkgSubItems = (masterProduct as any)?.packageItems;
-    const finalTitle = isPkg ? formatPackageDisplayName(flatProduct.displayName, pkgSubItems) : flatProduct.displayName;
-    const finalTitleSi = isPkg ? formatPackageDisplayName(flatProduct.product.nameAlt || flatProduct.displayName, pkgSubItems) : (flatProduct.product.nameAlt || flatProduct.displayName);
 
-    const newItem: QuickInvoiceItem = {
-      id: `item-${Date.now()}`,
-      productId: flatProduct.flatId,
-      productName: finalTitle,
-      productNameSi: finalTitleSi,
-      variantId: flatProduct.variant?.id,
-      size: flatProduct.variant?.size,
-      quantity: addQty,
-      unitPrice: ourPriceVal,
-      originalPrice: displayPriceVal,
-      total: addQty * ourPriceVal,
-      cost: costVal,
-      lastPrice: lastPriceVal,
-      salesPrice: ourPriceVal,
-      displayPrice: displayPriceVal,
-      ourPrice: ourPriceVal,
-      storeQty: storeQtyVal,
-    };
+      // 🌟 Format title if item is a package bundle
+      const isPkg = (masterProduct as any)?.isPackage;
+      const pkgSubItems = (masterProduct as any)?.packageItems;
+      const finalTitle = isPkg ? formatPackageDisplayName(flatProduct.displayName, pkgSubItems) : flatProduct.displayName;
+      const finalTitleSi = isPkg ? formatPackageDisplayName(flatProduct.product.nameAlt || flatProduct.displayName, pkgSubItems) : (flatProduct.product.nameAlt || flatProduct.displayName);
+
+      const newItem: QuickInvoiceItem = {
+        id: `item-${Date.now()}`,
+        productId: flatProduct.flatId,
+        productName: finalTitle,
+        productNameSi: finalTitleSi,
+        variantId: flatProduct.variant?.id,
+        size: flatProduct.variant?.size,
+        quantity: addQty,
+        unitPrice: ourPriceVal,
+        originalPrice: displayPriceVal,
+        total: addQty * ourPriceVal,
+        cost: costVal,
+        lastPrice: lastPriceVal,
+        salesPrice: ourPriceVal,
+        displayPrice: displayPriceVal,
+        ourPrice: ourPriceVal,
+        storeQty: storeQtyVal,
+      };
       setItems([...items, newItem]);
     }
 
@@ -1149,110 +1149,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
     }
   }, [findExactMatch, addOneToCart, playBeep, t]);
 
-  const handleBarcodeScanDispatch = useCallback((scannedValue: string): boolean => {
-    const trimmed = scannedValue.trim();
-    if (!trimmed || trimmed.length < 4) return false;
 
-    // First: try exact barcode match (if Barcode checkbox active)
-    if (searchBarcode) {
-      const foundProduct = inventoryItems.find(
-        p => p.barcode && p.barcode.trim() === trimmed
-      );
-      if (foundProduct) {
-        const sinhalaName = foundProduct.nameSinhala || foundProduct.nameSi || foundProduct.name;
-        const fp: FlattenedProduct = {
-          flatId: foundProduct.id,
-          product: { nameAlt: sinhalaName, sku: foundProduct.searchKey, category: foundProduct.productCategory } as any,
-          variant: undefined,
-          displayName: foundProduct.name,
-          displaySku: foundProduct.searchKey,
-          displayBarcode: foundProduct.barcode,
-          costPrice: foundProduct.cost,
-          wholesalePrice: foundProduct.displayPrice,
-          retailPrice: foundProduct.salesPrice,
-          discountedPrice: undefined,
-          hasDiscount: false,
-          stock: foundProduct.storeQty,
-          minStock: 0,
-          isVariant: false,
-          variantLabel: undefined,
-        } as FlattenedProduct;
-
-        addOneToCart(fp);
-        toast.success(`${foundProduct.name} ${t('quickCheckout.addedToCart')}`, { autoClose: 2000 });
-        setProductSearch('');
-        setSelectedProductIndex(-1);
-        searchInputRef.current?.focus();
-        return true;
-      }
-    }
-
-    // Second: try exact product.no match (if Product No checkbox active)
-    if (searchByNo) {
-      const foundByNo = inventoryItems.find(
-        p => p.no && String(p.no).trim() === trimmed
-      );
-      if (foundByNo) {
-        const sinhalaName = foundByNo.nameSinhala || foundByNo.nameSi || foundByNo.name;
-        const fp: FlattenedProduct = {
-          flatId: foundByNo.id,
-          product: { nameAlt: sinhalaName, sku: foundByNo.searchKey, category: foundByNo.productCategory } as any,
-          variant: undefined,
-          displayName: foundByNo.name,
-          displaySku: foundByNo.searchKey,
-          displayBarcode: foundByNo.barcode || foundByNo.searchKey,
-          costPrice: foundByNo.cost,
-          wholesalePrice: foundByNo.displayPrice,
-          retailPrice: foundByNo.salesPrice,
-          discountedPrice: undefined,
-          hasDiscount: false,
-          stock: foundByNo.storeQty,
-          minStock: 0,
-          isVariant: false,
-          variantLabel: undefined,
-        } as FlattenedProduct;
-
-        addOneToCart(fp);
-        toast.success(`${foundByNo.name} ${t('quickCheckout.addedToCart')}`, { autoClose: 2000 });
-        setProductSearch('');
-        setSelectedProductIndex(-1);
-        searchInputRef.current?.focus();
-        return true;
-      }
-    }
-
-    return false;
-  }, [inventoryItems, addOneToCart, t, searchBarcode, searchByNo]);
-
-  // Auto-detect barcode scan / direct paste (when field gains input) — direct add to cart
-  useEffect(() => {
-    if (filteredProducts.length === 1 && productSearch.length >= 2) {
-      const flatProduct = filteredProducts[0];
-      const raw = productSearch.trim();
-      const lower = raw.toLowerCase();
-      const isExactMatch =
-        flatProduct.displayBarcode === raw ||
-        flatProduct.displaySku.toLowerCase() === lower ||
-        flatProduct.product.sku.toLowerCase() === lower ||
-        // Also check product.no from the master inventory item
-        (searchByNo && inventoryItems.some(inv =>
-          inv.id === flatProduct.flatId && inv.no && String(inv.no).trim() === raw
-        ));
-
-      if (isExactMatch) {
-        if (flatProduct.stock > 0) {
-          addOneToCart(flatProduct);
-          setProductSearch('');
-          setSelectedProductIndex(-1);
-          playBeep('add');
-          toast.success(`${flatProduct.displayName} ${t('quickCheckout.addedToCart')}`, { autoClose: 1500 });
-        } else {
-          playBeep('error');
-          toast.error(t('quickCheckout.insufficientStock'));
-        }
-      }
-    }
-  }, [filteredProducts, productSearch, addOneToCart, playBeep, t]);
 
   const parseQuantityInput = useCallback((input: string): number => {
     const trimmed = input.trim();
@@ -1596,15 +1493,15 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
     //    sale is done so their carts clear in lockstep with this one. ──
 
     // 🌟 [TEMP DISABLED]
-/*
-    if (liveSyncEnabled && sessionCode && invoiceNumber) {
-      liveSync.broadcastInvoiceSaved({
-        invoiceNumber,
-        total: finalizedTotal ?? computedFinalTotal,
-        finalizedBy: currentUser?.name || 'Admin User',
-      });
-    }
-      */
+    /*
+        if (liveSyncEnabled && sessionCode && invoiceNumber) {
+          liveSync.broadcastInvoiceSaved({
+            invoiceNumber,
+            total: finalizedTotal ?? computedFinalTotal,
+            finalizedBy: currentUser?.name || 'Admin User',
+          });
+        }
+          */
 
     setItems([]);
     setDiscount(0);
@@ -1936,15 +1833,15 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
       // ── Universal Checkout: notify every other live-synced terminal ──
 
       // 🌟 [TEMP DISABLED]
-/*
-      if (liveSyncEnabled && sessionCode) {
-        liveSync.broadcastInvoiceSaved({
-          invoiceNumber: savedInvoiceNumber,
-          total: payload.total,
-          finalizedBy: currentUser?.name || 'Admin User',
-        });
-      }
-        */
+      /*
+            if (liveSyncEnabled && sessionCode) {
+              liveSync.broadcastInvoiceSaved({
+                invoiceNumber: savedInvoiceNumber,
+                total: payload.total,
+                finalizedBy: currentUser?.name || 'Admin User',
+              });
+            }
+              */
 
       clearCart();
       toast.success(
@@ -2284,7 +2181,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
     }
   }, [selectedProductIndex]);
 
- // 🌟 [UPDATED: OUTSIDE CLICK LISTENER] Input එක, එහි text එක, හෝ අදාළ Cart Item/Package Box
+  // 🌟 [UPDATED: OUTSIDE CLICK LISTENER] Input එක, එහි text එක, හෝ අදාළ Cart Item/Package Box
   // එක ඇතුළේ click කළහොත් close නොවීම සඳහා — box එකෙන් සම්පූර්ණයෙන්ම පිටත mousedown කළහොත් පමණක් වැසේ
   useEffect(() => {
     const handleGlobalClick = (e: MouseEvent) => {
@@ -2344,7 +2241,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
   // reserving more width than it needed. Trimming Subtotal's width here and
   // handing that space to the leading Product column gives package sub-items
   // (rendered as a spanning inline list) noticeably more horizontal room.
-// 🌟 Subtotal එකට සහ අනික් columns වලට නියම visual weight එකක් ලබා දීම
+  // 🌟 Subtotal එකට සහ අනික් columns වලට නියම visual weight එකක් ලබා දීම
   const columnConfigs: ColumnResizeConfig[] = useMemo(() => [
     { key: 'product', defaultWidth: 38, minWidth: 20, maxWidth: 55 },
     { key: 'cost', defaultWidth: 8, minWidth: 5, maxWidth: 14 },
@@ -2473,7 +2370,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                   e.stopPropagation();
                   (e.nativeEvent as Event).stopImmediatePropagation?.();
                   const val = e.target.value;
-                  if (handleBarcodeScanDispatch(val)) return;
+                  // 🌟 Auto-add ඉවත් කරන ලදී. දැන් Enter එබූ විට පමණක් Add වේ.
                   const parsed = parseScanInput(val);
                   if (parsed?.qty && parsed?.code) {
                     const match = inventoryItems.find(
@@ -2530,12 +2427,12 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 }}
                 onBlur={() => setTimeout(() => setMobileSearchFocused(false), 200)}
                 className={`w-full pl-9 pr-9 py-2 text-sm border-2 rounded-xl focus:outline-none transition-all ${mobileSearchFocused
-                    ? isDark
-                      ? 'border-amber-500 bg-slate-800 text-white ring-2 ring-amber-500/20'
-                      : 'border-amber-500 bg-white text-slate-900 ring-2 ring-amber-100'
-                    : isDark
-                      ? 'border-slate-700 bg-slate-800/80 text-white placeholder-slate-500'
-                      : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400'
+                  ? isDark
+                    ? 'border-amber-500 bg-slate-800 text-white ring-2 ring-amber-500/20'
+                    : 'border-amber-500 bg-white text-slate-900 ring-2 ring-amber-100'
+                  : isDark
+                    ? 'border-slate-700 bg-slate-800/80 text-white placeholder-slate-500'
+                    : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400'
                   }`}
               />
               {productSearch && (
@@ -2576,8 +2473,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                         }
                       }}
                       className={`w-full flex items-center gap-2 p-2.5 text-left transition-all active:scale-[0.98] border-b last:border-b-0 ${index === selectedProductIndex
-                          ? isDark ? 'bg-amber-500/20' : 'bg-amber-50'
-                          : isDark ? 'active:bg-slate-700/70 border-slate-700/50' : 'active:bg-slate-50 border-slate-100'
+                        ? isDark ? 'bg-amber-500/20' : 'bg-amber-50'
+                        : isDark ? 'active:bg-slate-700/70 border-slate-700/50' : 'active:bg-slate-50 border-slate-100'
                         }`}
                     >
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
@@ -2594,10 +2491,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                             {flatProduct.displaySku}
                           </span>
                           <span className={`text-[10px] px-1 py-0.5 rounded ${flatProduct.stock > 10
-                              ? 'bg-emerald-500/10 text-emerald-500'
-                              : flatProduct.stock > 0
-                                ? 'bg-amber-500/10 text-amber-500'
-                                : 'bg-red-500/10 text-red-500'
+                            ? 'bg-emerald-500/10 text-emerald-500'
+                            : flatProduct.stock > 0
+                              ? 'bg-amber-500/10 text-amber-500'
+                              : 'bg-red-500/10 text-red-500'
                             }`}>
                             {flatProduct.stock}
                           </span>
@@ -2639,16 +2536,16 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                             }
                           }}
                           className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition-all ${getItemCartQuantity(items, flatProduct.flatId) > 0
-                              ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
-                              : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
+                            ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
+                            : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
                             }`}
                           disabled={getItemCartQuantity(items, flatProduct.flatId) <= 0}
                         >
                           <Minus className="w-2.5 h-2.5" />
                         </button>
                         <span className={`w-5 text-center font-bold text-[9px] tabular-nums ${getItemCartQuantity(items, flatProduct.flatId) > 0
-                            ? 'text-amber-500'
-                            : isDark ? 'text-slate-500' : 'text-slate-400'
+                          ? 'text-amber-500'
+                          : isDark ? 'text-slate-500' : 'text-slate-400'
                           }`}>
                           {getItemCartQuantity(items, flatProduct.flatId)}
                         </span>
@@ -2665,8 +2562,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                             }
                           }}
                           className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition-all ${isDark
-                              ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
-                              : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
+                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
                             }`}
                         >
                           <Plus className="w-2.5 h-2.5" />
@@ -2696,8 +2593,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
               </h2>
               {/* 🌟 Mobile layout එකේද Package sub-items ගණන එකතු කර පෙන්වීම */}
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${items.length > 0
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
-                  : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white'
+                : isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'
                 }`}>
                 {calculateTotalItemCount(items)}
               </span>
@@ -2724,10 +2621,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                       transition: swipedItemId === item.id ? 'none' : 'transform 0.2s ease-out',
                     }}
                     className={`relative p-2.5 ${swipedItemId === item.id && touchDeltaX < -30
-                        ? isDark ? 'bg-red-500/20' : 'bg-red-50'
-                        : swipedItemId === item.id && touchDeltaX > 30
-                          ? isDark ? 'bg-emerald-500/20' : 'bg-emerald-50'
-                          : ''
+                      ? isDark ? 'bg-red-500/20' : 'bg-red-50'
+                      : swipedItemId === item.id && touchDeltaX > 30
+                        ? isDark ? 'bg-emerald-500/20' : 'bg-emerald-50'
+                        : ''
                       }`}
                   >
                     {swipedItemId === item.id && touchDeltaX < -30 && (
@@ -2803,8 +2700,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 <button
                   onClick={() => { setPaymentMethod('cash'); playBeep('add'); }}
                   className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-all ${paymentMethod === 'cash'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                      : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-600'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                    : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-600'
                     }`}
                 >
                   <Banknote className="w-3.5 h-3.5" />
@@ -2813,8 +2710,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 <button
                   onClick={() => { setPaymentMethod('credit'); playBeep('add'); }}
                   className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-all ${paymentMethod === 'credit'
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                      : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-600'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                    : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-600'
                     }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
@@ -2860,8 +2757,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 onClick={handleCheckout}
                 disabled={items.length === 0 || isProcessing}
                 className={`py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${items.length > 0
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
-                    : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
+                  : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                   }`}
               >
                 {isProcessing ? (
@@ -2881,8 +2778,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                   onClick={handleUpdateInvoice}
                   disabled={items.length === 0 || isProcessing}
                   className={`w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${items.length > 0
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
-                      : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
+                    : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                     }`}
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -2969,93 +2866,90 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
           <div className="flex items-center gap-1.5">
             {/* ── LIVE SYNC badge/toggle ── */}
             {false && (
-            <div className="relative flex items-center">
-              <button
-                onClick={() => {
-                  setLiveSyncEnabled(prev => !prev);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                  liveSyncEnabled && liveSync.isConnected
-                    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 shadow-sm shadow-emerald-500/10'
-                    : liveSyncEnabled
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-sm shadow-amber-500/10'
-                    : isDark
-                    ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 shadow-sm'
-                }`}
-                title={
-                  liveSyncEnabled
-                    ? liveSync.isConnected
-                      ? `Live Sync active — Room: ${sessionCode} (${liveSync.peerCount} connected). Click to toggle.`
-                      : 'Connecting to Live Sync…'
-                    : 'Click to enable Live Sync'
-                }
-              >
-                {liveSyncEnabled && liveSync.isConnected ? (
-                  <span className="relative flex h-2 w-2 mr-0.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                ) : liveSyncEnabled ? (
-                  <Wifi className="w-3.5 h-3.5 animate-pulse" />
-                ) : (
-                  <WifiOff className="w-3.5 h-3.5" />
-                )}
-                LIVE {liveSyncEnabled && liveSync.isConnected ? `· ${liveSync.peerCount}` : ''}
-              </button>
+              <div className="relative flex items-center">
+                <button
+                  onClick={() => {
+                    setLiveSyncEnabled(prev => !prev);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${liveSyncEnabled && liveSync.isConnected
+                      ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-500 shadow-sm shadow-emerald-500/10'
+                      : liveSyncEnabled
+                        ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-sm shadow-amber-500/10'
+                        : isDark
+                          ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100 shadow-sm'
+                    }`}
+                  title={
+                    liveSyncEnabled
+                      ? liveSync.isConnected
+                        ? `Live Sync active — Room: ${sessionCode} (${liveSync.peerCount} connected). Click to toggle.`
+                        : 'Connecting to Live Sync…'
+                      : 'Click to enable Live Sync'
+                  }
+                >
+                  {liveSyncEnabled && liveSync.isConnected ? (
+                    <span className="relative flex h-2 w-2 mr-0.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                    </span>
+                  ) : liveSyncEnabled ? (
+                    <Wifi className="w-3.5 h-3.5 animate-pulse" />
+                  ) : (
+                    <WifiOff className="w-3.5 h-3.5" />
+                  )}
+                  LIVE {liveSyncEnabled && liveSync.isConnected ? `· ${liveSync.peerCount}` : ''}
+                </button>
 
-              {/* 3 Dots Menu Button */}
-              <button
-                onClick={() => setShowSessionCodeEditor(v => !v)}
-                className={`ml-1 p-1.5 rounded-lg transition-colors ${
-                  isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-                title="Change Session Room"
-              >
-                <MoreVertical className="w-4 h-4" />
-              </button>
+                {/* 3 Dots Menu Button */}
+                <button
+                  onClick={() => setShowSessionCodeEditor(v => !v)}
+                  className={`ml-1 p-1.5 rounded-lg transition-colors ${isDark ? 'text-slate-400 hover:text-white hover:bg-slate-700' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  title="Change Session Room"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
 
-              {showSessionCodeEditor && (
-                <div className={`absolute right-0 top-full mt-2 z-20 p-3 rounded-xl border shadow-xl w-64 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Custom Room</h4>
-                    <button onClick={() => setShowSessionCodeEditor(false)} className={`p-0.5 rounded ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}>
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <p className={`text-[10px] mb-2.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Enter a room name to pair terminals together (Default: SHOP).
-                  </p>
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="text"
-                      defaultValue={sessionCode}
-                      id="customRoomInput"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          joinSessionCode((e.target as HTMLInputElement).value);
+                {showSessionCodeEditor && (
+                  <div className={`absolute right-0 top-full mt-2 z-20 p-3 rounded-xl border shadow-xl w-64 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <h4 className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Custom Room</h4>
+                      <button onClick={() => setShowSessionCodeEditor(false)} className={`p-0.5 rounded ${isDark ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-100'}`}>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <p className={`text-[10px] mb-2.5 leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Enter a room name to pair terminals together (Default: SHOP).
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        defaultValue={sessionCode}
+                        id="customRoomInput"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            joinSessionCode((e.target as HTMLInputElement).value);
+                            setShowSessionCodeEditor(false);
+                          }
+                        }}
+                        placeholder="e.g. SHOP"
+                        className={`w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold uppercase focus:outline-none focus:ring-2 ${isDark ? 'bg-slate-900 border border-slate-700 text-white focus:ring-amber-500/50' : 'bg-slate-50 border border-slate-200 text-slate-900 focus:ring-amber-500/50'
+                          }`}
+                      />
+                      <button
+                        onClick={() => {
+                          const input = document.getElementById('customRoomInput') as HTMLInputElement;
+                          if (input) joinSessionCode(input.value);
                           setShowSessionCodeEditor(false);
-                        }
-                      }}
-                      placeholder="e.g. SHOP"
-                      className={`w-full px-2.5 py-1.5 rounded-lg text-sm font-semibold uppercase focus:outline-none focus:ring-2 ${
-                        isDark ? 'bg-slate-900 border border-slate-700 text-white focus:ring-amber-500/50' : 'bg-slate-50 border border-slate-200 text-slate-900 focus:ring-amber-500/50'
-                      }`}
-                    />
-                    <button
-                      onClick={() => {
-                        const input = document.getElementById('customRoomInput') as HTMLInputElement;
-                        if (input) joinSessionCode(input.value);
-                        setShowSessionCodeEditor(false);
-                      }}
-                      className="w-full text-xs font-bold py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow shadow-emerald-500/20"
-                    >
-                      Connect
-                    </button>
+                        }}
+                        className="w-full text-xs font-bold py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow shadow-emerald-500/20"
+                      >
+                        Connect
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             )}
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
@@ -3115,7 +3009,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                             e.stopPropagation();
                             (e.nativeEvent as Event).stopImmediatePropagation?.();
                             const val = e.target.value;
-                            if (handleBarcodeScanDispatch(val)) return;
+                            // 🌟 Auto-add ඉවත් කරන ලදී. දැන් Enter එබූ විට පමණක් Add වේ.
                             const parsed = parseScanInput(val);
                             if (parsed?.qty && parsed?.code) {
                               const match = inventoryItems.find(
@@ -3166,8 +3060,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                             }
                           }}
                           className={`w-full pl-9 pr-8 py-2 text-sm border-2 rounded-lg focus:outline-none transition-all ${isDark
-                              ? 'border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500'
-                              : 'border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:border-amber-500'
+                            ? 'border-slate-600 bg-slate-700/50 text-white placeholder-slate-500 focus:border-amber-500'
+                            : 'border-slate-200 bg-slate-50 text-slate-900 placeholder-slate-400 focus:border-amber-500'
                             }`}
                           autoComplete="off"
                         />
@@ -3220,10 +3114,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                 }}
                                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
                                 className={`w-full flex items-center gap-2 p-2 text-left transition-colors border-b last:border-b-0 rounded-lg cursor-pointer outline-none focus:ring-2 focus:ring-amber-500/50 ${index === activeMainSearchIndex
-                                    ? isDark ? 'bg-slate-800 border-l-4 border-amber-500 shadow-xl' : 'bg-amber-100 border-l-4 border-amber-500 shadow'
-                                    : index === selectedProductIndex
-                                      ? isDark ? 'bg-amber-500/20 border-amber-500/30' : 'bg-amber-50 border-amber-200'
-                                      : isDark ? 'hover:bg-slate-700/50 border-slate-700' : 'hover:bg-white border-slate-200'
+                                  ? isDark ? 'bg-slate-800 border-l-4 border-amber-500 shadow-xl' : 'bg-amber-100 border-l-4 border-amber-500 shadow'
+                                  : index === selectedProductIndex
+                                    ? isDark ? 'bg-amber-500/20 border-amber-500/30' : 'bg-amber-50 border-amber-200'
+                                    : isDark ? 'hover:bg-slate-700/50 border-slate-700' : 'hover:bg-white border-slate-200'
                                   }`}
                               >
                                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDark ? 'bg-slate-700' : 'bg-white'}`}>
@@ -3273,16 +3167,16 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                       }
                                     }}
                                     className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold transition-all ${getItemCartQuantity(items, flatProduct.flatId) > 0
-                                        ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
-                                        : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
+                                      ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
+                                      : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
                                       }`}
                                     disabled={getItemCartQuantity(items, flatProduct.flatId) <= 0}
                                   >
                                     <Minus className="w-2.5 h-2.5" />
                                   </button>
                                   <span className={`w-5 text-center font-bold text-[10px] tabular-nums ${getItemCartQuantity(items, flatProduct.flatId) > 0
-                                      ? 'text-amber-500'
-                                      : isDark ? 'text-slate-500' : 'text-slate-400'
+                                    ? 'text-amber-500'
+                                    : isDark ? 'text-slate-500' : 'text-slate-400'
                                     }`}>
                                     {getItemCartQuantity(items, flatProduct.flatId)}
                                   </span>
@@ -3346,8 +3240,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                       playBeep('add');
                                     }}
                                     className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold transition-all ${isDark
-                                        ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
-                                        : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
+                                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
                                       }`}
                                   >
                                     <Plus className="w-2.5 h-2.5" />
@@ -3381,8 +3275,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                     }
                   }}
                   className={`p-3 rounded-xl border outline-none overflow-x-hidden ${isCartFocused
-                      ? isDark ? 'bg-slate-800/50 border-amber-500/50 ring-1 ring-amber-500/20' : 'bg-slate-50 border-amber-400 ring-1 ring-amber-200 shadow'
-                      : isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200 shadow-sm'
+                    ? isDark ? 'bg-slate-800/50 border-amber-500/50 ring-1 ring-amber-500/20' : 'bg-slate-50 border-amber-400 ring-1 ring-amber-200 shadow'
+                    : isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200 shadow-sm'
                     }`}
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -3405,10 +3299,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                           }
                         }}
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${isQuickAddMode
-                            ? 'bg-teal-500 text-white shadow-sm'
-                            : isDark
-                              ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 border border-slate-600/50'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                          ? 'bg-teal-500 text-white shadow-sm'
+                          : isDark
+                            ? 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 border border-slate-600/50'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                           }`}
                       >
                         <Plus className="w-3 h-3" />
@@ -3533,10 +3427,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                               setCurrentMode('cart');
                             }}
                             className={`grid items-center px-2 py-2.5 rounded-lg transition-all cursor-pointer outline-none relative group ${isCartFocused && index === selectedCartIndex
-                                ? isDark
-                                  ? 'bg-amber-500/20 shadow ring-1 ring-amber-500/50'
-                                  : 'bg-amber-50 shadow ring-1 ring-amber-400/50'
-                                : isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'
+                              ? isDark
+                                ? 'bg-amber-500/20 shadow ring-1 ring-amber-500/50'
+                                : 'bg-amber-50 shadow ring-1 ring-amber-400/50'
+                              : isDark ? 'bg-slate-700/50 hover:bg-slate-700' : 'bg-slate-50 hover:bg-slate-100'
                               }`}
                             style={{ gridTemplateColumns: getGridTemplateColumns() }}
                           >
@@ -3558,7 +3452,7 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                               return (
                                 <>
                                   {/* ── 1. PRODUCT NAME COLUMN (Package වලදී Cost & Last තීරු 2ක ඉඩද රැගෙන span 3 ලෙස දිගට පෙන්වීම) ── */}
-                                  <div 
+                                  <div
                                     className="min-w-0 py-1 pr-3"
                                     style={isPkg ? { gridColumn: 'span 3 / span 3' } : undefined}
                                   >
@@ -3577,11 +3471,11 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                             commitCartItemName(item.id);
                                           }
                                         }}
-                                        // 🌟 onBlur ඉවත් කරන ලදී. දැන් පිටත click කළහොත් පමණක් save වී වැසේ
+                                      // 🌟 onBlur ඉවත් කරන ලදී. දැන් පිටත click කළහොත් පමණක් save වී වැසේ
                                       />
                                     ) : (
                                       <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
-                                        <p 
+                                        <p
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             // 🌟 දැනටමත් මෙම cell එක edit වෙමින් පවතී නම් නැවත reset වීම වළක්වයි
@@ -3629,10 +3523,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                                       commitCartItemSubName(item.id, sIdx);
                                                     }
                                                   }}
-                                                  // 🌟 onBlur ඉවත් කරන ලදී.
+                                                // 🌟 onBlur ඉවත් කරන ලදී.
                                                 />
                                               ) : (
-                                                <span 
+                                                <span
                                                   onClick={(e) => {
                                                     e.stopPropagation();
                                                     // 🌟 දැනටමත් මෙම sub-item එක edit වෙමින් පවතී නම් නැවත reset වීම වළක්වයි
@@ -3649,11 +3543,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                                   • {cleanItemName}
                                                 </span>
                                               )}
-                                              <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono flex-shrink-0 ${
-                                                isDark 
-                                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                                              <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono flex-shrink-0 ${isDark
+                                                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                                                   : 'bg-amber-100 text-amber-800 border border-amber-200'
-                                              }`}>
+                                                }`}>
                                                 {subQty}×
                                               </span>
                                             </div>
@@ -3688,8 +3581,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                         inputMode="decimal"
                                         step="any"
                                         className={`w-20 font-bold text-right rounded border px-1.5 py-1 focus:outline-none text-sm font-mono tabular-nums ${isDark
-                                            ? 'bg-amber-500/10 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
-                                            : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
+                                          ? 'bg-amber-500/10 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
+                                          : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
                                           }`}
                                         value={inlineEditStr}
                                         onChange={(e) => setInlineEditStr(e.target.value)}
@@ -3738,8 +3631,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                         type="number"
                                         min="0"
                                         className={`w-14 font-bold text-center rounded border py-0.5 focus:outline-none text-xs tabular-nums ${isDark
-                                            ? 'bg-slate-800 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
-                                            : 'bg-white text-amber-700 border-amber-400 ring-1 ring-amber-200'
+                                          ? 'bg-slate-800 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
+                                          : 'bg-white text-amber-700 border-amber-400 ring-1 ring-amber-200'
                                           }`}
                                         value={inlineEditStr}
                                         onChange={(e) => setInlineEditStr(e.target.value)}
@@ -3758,11 +3651,10 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                           setEditingCell({ itemId: item.id, field: 'storeQty' });
                                           setInlineEditStr(String(item.storeQty ?? 0));
                                         }}
-                                        className={`cursor-pointer hover:bg-amber-500/10 rounded px-1.5 py-0.5 text-sm font-mono font-semibold transition-colors ${
-                                          item.storeQty !== undefined && item.storeQty < 10 
-                                            ? 'text-amber-500 font-bold animate-pulse' 
+                                        className={`cursor-pointer hover:bg-amber-500/10 rounded px-1.5 py-0.5 text-sm font-mono font-semibold transition-colors ${item.storeQty !== undefined && item.storeQty < 10
+                                            ? 'text-amber-500 font-bold animate-pulse'
                                             : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
-                                        }`}
+                                          }`}
                                         title="Click to edit stock quantity"
                                       >
                                         {item.storeQty !== undefined && item.storeQty !== null ? item.storeQty : '-'}
@@ -3783,8 +3675,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                   inputMode="decimal"
                                   step="any"
                                   className={`w-16 font-bold text-center rounded border py-1 focus:outline-none text-sm tabular-nums ${isDark
-                                      ? 'bg-amber-500/10 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
-                                      : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
+                                    ? 'bg-amber-500/10 text-amber-300 border-amber-500 ring-1 ring-amber-500/30'
+                                    : 'bg-amber-50 text-amber-700 border-amber-400 ring-1 ring-amber-200'
                                     }`}
                                   value={inlineEditStr}
                                   onChange={(e) => {
@@ -3872,8 +3764,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                         type="button"
                         onClick={() => setShowDisplaySettings(true)}
                         className={`px-2.5 py-1 rounded-lg text-[9px] font-bold transition-all duration-200 flex items-center gap-1 ${isDark
-                            ? 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
-                            : 'bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-200'
+                          ? 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                          : 'bg-slate-100 border border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-200'
                           }`}
                       >
                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3916,8 +3808,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                               }}
                               data-cat-id={cat.id}
                               className={`relative group rounded-xl flex flex-col items-center justify-center text-center min-h-[72px] transition-all duration-200 ${isDark
-                                  ? 'bg-slate-800/50 border border-slate-700/80 hover:border-slate-600 hover:bg-slate-800/60 active:scale-95'
-                                  : 'bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 active:scale-95 shadow-sm'
+                                ? 'bg-slate-800/50 border border-slate-700/80 hover:border-slate-600 hover:bg-slate-800/60 active:scale-95'
+                                : 'bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 active:scale-95 shadow-sm'
                                 }`}
                             >
                               <div className="w-full flex flex-col items-center justify-center py-2 px-1">
@@ -3951,27 +3843,26 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 {activeCategoryPopover && categoryPopoverAnchor && (
                   <>
                     <div
-                    ref={categoryPopoverRef}
-  className={`fixed z-[201] rounded-xl border shadow-2xl overflow-hidden w-[600px] max-w-[calc(100vw-32px)] flex flex-col ${
-    isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
-  } ${isDraggingPopover ? 'select-none' : ''}`}
-  style={(() => {
-    // Free-floating, draggable position — always clamped to stay fully inside the viewport
-    const pos = popoverPos ?? clampPopoverPosition(
-      categoryPopoverAnchor ? categoryPopoverAnchor.left : 16,
-      categoryPopoverAnchor
-        ? Math.max(20, Math.min(categoryPopoverAnchor.top - 240, window.innerHeight - 560))
-        : 16
-    );
-    return {
-      top: pos.y,
-      left: pos.x,
-      height: 'auto',
-      maxHeight: 'calc(100vh - 48px)',
-      display: 'flex',
-      flexDirection: 'column' as const,
-    };
-  })()}
+                      ref={categoryPopoverRef}
+                      className={`fixed z-[201] rounded-xl border shadow-2xl overflow-hidden w-[600px] max-w-[calc(100vw-32px)] flex flex-col ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
+                        } ${isDraggingPopover ? 'select-none' : ''}`}
+                      style={(() => {
+                        // Free-floating, draggable position — always clamped to stay fully inside the viewport
+                        const pos = popoverPos ?? clampPopoverPosition(
+                          categoryPopoverAnchor ? categoryPopoverAnchor.left : 16,
+                          categoryPopoverAnchor
+                            ? Math.max(20, Math.min(categoryPopoverAnchor.top - 240, window.innerHeight - 560))
+                            : 16
+                        );
+                        return {
+                          top: pos.y,
+                          left: pos.x,
+                          height: 'auto',
+                          maxHeight: 'calc(100vh - 48px)',
+                          display: 'flex',
+                          flexDirection: 'column' as const,
+                        };
+                      })()}
                     >
                       {(() => {
                         // ── Category popover search uses the QUADRUPLE CHECKBOX filter, same as main search ──
@@ -4153,8 +4044,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                       }
                                     }}
                                     className={`w-full border focus:border-amber-500/50 rounded-xl p-3 pl-10 text-xs font-bold focus:outline-none mb-0 ${isDark
-                                        ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500'
-                                        : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
+                                      ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500'
+                                      : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'
                                       }`}
                                   />
                                 </div>
@@ -4162,8 +4053,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
 
                               <div
                                 ref={categoryListContainerRef}
-  className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 min-h-0 w-full" 
-  style={{ maxHeight: 'min(520px, calc(100vh - 180px))' }}
+                                className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1 min-h-0 w-full"
+                                style={{ maxHeight: 'min(520px, calc(100vh - 180px))' }}
                               >
                                 {filteredCategoryProducts.length > 0 ? (
                                   <div className="flex flex-col gap-0.5 pt-2 px-1 pb-1">
@@ -4206,17 +4097,17 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                             }
                                           }}
                                           className={`p-2.5 rounded-xl flex items-center gap-2 transition-all duration-150 cursor-pointer border-l-4 ${isFocusedRow
-                                              ? isDark
-                                                ? 'bg-slate-800 border-l-4 border-amber-500 shadow-lg ring-2 ring-amber-500/40 z-10'
-                                                : 'bg-amber-50 border-l-4 border-amber-500 shadow-lg ring-2 ring-amber-500/40 z-10'
-                                              : isDark
-                                                ? 'bg-slate-900/40 hover:bg-slate-900/80 border-l-4 border-transparent hover:border-slate-700'
-                                                : 'bg-slate-50 hover:bg-slate-100 border-l-4 border-transparent hover:border-slate-300'
+                                            ? isDark
+                                              ? 'bg-slate-800 border-l-4 border-amber-500 shadow-lg ring-2 ring-amber-500/40 z-10'
+                                              : 'bg-amber-50 border-l-4 border-amber-500 shadow-lg ring-2 ring-amber-500/40 z-10'
+                                            : isDark
+                                              ? 'bg-slate-900/40 hover:bg-slate-900/80 border-l-4 border-transparent hover:border-slate-700'
+                                              : 'bg-slate-50 hover:bg-slate-100 border-l-4 border-transparent hover:border-slate-300'
                                             }`}
                                         >
                                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isFocusedRow
-                                              ? 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20'
-                                              : isDark ? 'bg-slate-800' : 'bg-slate-200'
+                                            ? 'bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/20'
+                                            : isDark ? 'bg-slate-800' : 'bg-slate-200'
                                             }`}>
                                             <Package className={`w-3.5 h-3.5 ${isFocusedRow ? (isDark ? 'text-white' : 'text-amber-900') : isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                                           </div>
@@ -4261,16 +4152,16 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                                   }
                                                 }}
                                                 className={`w-4 h-4 rounded flex items-center justify-center text-[7px] font-bold transition-all ${getItemCartQuantity(items, item.id) > 0
-                                                    ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
-                                                    : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
+                                                  ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
+                                                  : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
                                                   }`}
                                                 disabled={getItemCartQuantity(items, item.id) <= 0}
                                               >
                                                 <Minus className="w-2 h-2" />
                                               </button>
                                               <span className={`w-4 text-center font-bold text-[8px] tabular-nums ${getItemCartQuantity(items, item.id) > 0
-                                                  ? 'text-amber-500'
-                                                  : isDark ? 'text-slate-500' : 'text-slate-400'
+                                                ? 'text-amber-500'
+                                                : isDark ? 'text-slate-500' : 'text-slate-400'
                                                 }`}>
                                                 {getItemCartQuantity(items, item.id)}
                                               </span>
@@ -4299,8 +4190,8 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                                                   }
                                                 }}
                                                 className={`w-4 h-4 rounded flex items-center justify-center text-[7px] font-bold transition-all ${isDark
-                                                    ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
-                                                    : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
+                                                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
+                                                  : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
                                                   }`}
                                               >
                                                 <Plus className="w-2 h-2" />
@@ -4427,83 +4318,80 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {/* Column 1: Checkout & Print (New) / Update & Print (Edit) — always F12 */}
                   <button
-    onClick={handleCheckout}
-    disabled={items.length === 0 || isProcessing}
-    className={`w-full py-3 px-1 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${
-      items.length > 0
-        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30'
-        : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-    }`}
-  >
-    <span className="flex items-center justify-center gap-1.5 text-center leading-tight">
-      <Printer className="w-4 h-4 flex-shrink-0" />
-      <span className="truncate">{editInvoiceId ? t('quickCheckout.updateAndPrint') : t('quickCheckout.checkoutAndPrint')}</span>
-    </span>
-    <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">F12</kbd>
-  </button>
+                    onClick={handleCheckout}
+                    disabled={items.length === 0 || isProcessing}
+                    className={`w-full py-3 px-1 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${items.length > 0
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30'
+                        : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                  >
+                    <span className="flex items-center justify-center gap-1.5 text-center leading-tight">
+                      <Printer className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate">{editInvoiceId ? t('quickCheckout.updateAndPrint') : t('quickCheckout.checkoutAndPrint')}</span>
+                    </span>
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">F12</kbd>
+                  </button>
 
                   {/* Column 2: Quick Save (New) / Update Invoice (Edit) */}
                   {editInvoiceId ? (
-    <button
-      onClick={handleUpdateInvoice}
-      disabled={items.length === 0 || isProcessing}
-      className={`w-full py-3 px-1 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${
-        items.length > 0
-          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-          : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-      }`}
-    >
-      <span className="flex items-center justify-center gap-1.5 text-center leading-tight">
-        <CheckCircle className="w-4 h-4 flex-shrink-0" />
-        <span className="truncate">{t('quickCheckout.updateInvoice')}</span>
-      </span>
-    </button>
-  ) : (
-    <button
-      onClick={handleQuickSave}
-      disabled={items.length === 0 || isProcessing}
-      className={`w-full py-3 px-1 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${
-        items.length > 0
-          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/30'
-          : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-      }`}
-    >
-      <span className="flex items-center justify-center gap-1.5 text-center leading-tight">
-        <CheckCircle className="w-4 h-4 flex-shrink-0" />
-        <span className="truncate">{t('quickCheckout.quickSave')}</span>
-      </span>
-      <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">F9</kbd>
-    </button>
-  )}
+                    <button
+                      onClick={handleUpdateInvoice}
+                      disabled={items.length === 0 || isProcessing}
+                      className={`w-full py-3 px-1 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${items.length > 0
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                          : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
+                    >
+                      <span className="flex items-center justify-center gap-1.5 text-center leading-tight">
+                        <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{t('quickCheckout.updateInvoice')}</span>
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleQuickSave}
+                      disabled={items.length === 0 || isProcessing}
+                      className={`w-full py-3 px-1 rounded-xl font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${items.length > 0
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/30'
+                          : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
+                    >
+                      <span className="flex items-center justify-center gap-1.5 text-center leading-tight">
+                        <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{t('quickCheckout.quickSave')}</span>
+                      </span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white/20 text-[10px] font-mono">F9</kbd>
+                    </button>
+                  )}
                 </div>
 
                 {/* ── CUSTOMER SELECTION: Searchable Combobox ── */}
-              <div ref={customerContainerRef} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
-  <div className="flex items-center justify-between mb-1.5">
-    <h3 className={`text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-      <User className="w-3 h-3" />
-      {t('quickCheckout.customerSelection')}
-    </h3>
-    <kbd className={`px-1 py-0.5 rounded text-[9px] font-mono ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>F3</kbd>
-  </div>
+                <div ref={customerContainerRef} className={`p-3 rounded-xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <h3 className={`text-xs font-semibold flex items-center gap-1.5 ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      <User className="w-3 h-3" />
+                      {t('quickCheckout.customerSelection')}
+                    </h3>
+                    <kbd className={`px-1 py-0.5 rounded text-[9px] font-mono ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}>F3</kbd>
+                  </div>
                   <div className="relative">
-    <div className={`flex items-center gap-2 px-3 py-2 border-2 rounded-lg transition-all cursor-pointer w-full ${isDark ? 'border-slate-600 bg-slate-700/50 hover:border-slate-500' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
-      <User className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-      <input
-        type="text"
-        value={customerSearch}
-        onChange={(e) => setCustomerSearch(e.target.value)}
-        onFocus={() => { setCustomerOpen(true); }}
-        placeholder={t('quickCheckout.searchCustomerPlaceholder')}
-        className={`flex-1 bg-transparent text-xs font-medium focus:outline-none w-full ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
-      />
-      {selectedCustomerId !== 'walk-in' && (
-        <button onClick={() => { setSelectedCustomerId('walk-in'); setCustomerSearch(''); setCustomerOpen(false); }}
-          className={`p-0.5 rounded flex-shrink-0 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
-          <X className="w-3 h-3" />
-        </button>
-      )}
-    </div>
+                    <div className={`flex items-center gap-2 px-3 py-2 border-2 rounded-lg transition-all cursor-pointer w-full ${isDark ? 'border-slate-600 bg-slate-700/50 hover:border-slate-500' : 'border-slate-200 bg-slate-50 hover:border-slate-300'}`}>
+                      <User className={`w-4 h-4 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                      <input
+                        type="text"
+                        value={customerSearch}
+                        onChange={(e) => setCustomerSearch(e.target.value)}
+                        onFocus={() => { setCustomerOpen(true); }}
+                        placeholder={t('quickCheckout.searchCustomerPlaceholder')}
+                        className={`flex-1 bg-transparent text-xs font-medium focus:outline-none w-full ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+                      />
+                      {selectedCustomerId !== 'walk-in' && (
+                        <button onClick={() => { setSelectedCustomerId('walk-in'); setCustomerSearch(''); setCustomerOpen(false); }}
+                          className={`p-0.5 rounded flex-shrink-0 ${isDark ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-slate-200 text-slate-500'}`}>
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                     {customerOpen && (
                       <div className={`absolute left-0 bottom-full mb-1 w-full rounded-lg border shadow-2xl z-50 overflow-hidden backdrop-blur-md ${isDark ? 'bg-slate-800/95 border-slate-700/50' : 'bg-white/95 border-slate-200'}`}>
                         <div className="max-h-32 overflow-y-auto">
@@ -4530,20 +4418,20 @@ const [liveSyncEnabled, setLiveSyncEnabled] = useState<boolean>(false);
                   </div>
                   {/* ── "+ New Customer" button — full-width, clean design ── */}
                   <button
-    onClick={() => {
-      setNewCustName('');
-      setNewCustPhone('');
-      setNewCustEmail('');
-      setNewCustAddress('');
-      setShowNewCustomerModal(true);
-      setCustomerOpen(false);
-    }}
-    className={`mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-semibold transition-all ${isDark ? 'border-slate-700 text-slate-400 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/5' : 'border-slate-300 text-slate-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
-    title={t('quickCheckout.newCustomer')}
-  >
-    <Plus className="w-4 h-4" />
-    {t('quickCheckout.newCustomer')}
-  </button>
+                    onClick={() => {
+                      setNewCustName('');
+                      setNewCustPhone('');
+                      setNewCustEmail('');
+                      setNewCustAddress('');
+                      setShowNewCustomerModal(true);
+                      setCustomerOpen(false);
+                    }}
+                    className={`mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed text-xs font-semibold transition-all ${isDark ? 'border-slate-700 text-slate-400 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/5' : 'border-slate-300 text-slate-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                    title={t('quickCheckout.newCustomer')}
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t('quickCheckout.newCustomer')}
+                  </button>
                   {/* Show phone number of selected customer */}
                   {selectedCustomerId !== 'walk-in' && selectedCustomerId && (() => {
                     const c = findCustomerById(selectedCustomerId);

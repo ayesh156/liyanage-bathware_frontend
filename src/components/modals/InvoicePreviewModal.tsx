@@ -327,10 +327,11 @@ export const InvoicePreviewModal: React.FC<InvoicePreviewModalProps> = ({
 
                                   return (
                                     <div key={sIdx} style={{ marginTop: '2px', marginBottom: '2px' }}>
-                                      <div style={{ fontSize: '11px', fontWeight: 400, color: '#222', lineHeight: 1.2, paddingLeft: '4px' }}>
+                                      {/* 🌟 Sub items bold (700) කිරීම */}
+                                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#222', lineHeight: 1.2, paddingLeft: '4px' }}>
                                         • {cleanItemName}
                                       </div>
-                                      <div style={{ display: 'flex', fontSize: '11px', fontWeight: 400, fontFamily: 'Courier New, monospace', color: '#000', width: '100%' }}>
+                                      <div style={{ display: 'flex', fontSize: '11px', fontWeight: 700, fontFamily: 'Courier New, monospace', color: '#000', width: '100%' }}>
                                         <span style={{ width: '12%', textAlign: 'center', flexShrink: 0 }}>{subQty}</span>
                                       </div>
                                     </div>

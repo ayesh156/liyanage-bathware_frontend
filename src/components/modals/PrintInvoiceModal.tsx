@@ -276,10 +276,10 @@ const generate80mmReceiptContent = (invoice: Invoice, customer?: Customer | null
 
         return `
           <div style="margin-top:2px;margin-bottom:2px;">
-            <div style="font-size:11px;font-weight:400;color:#222;line-height:1.2;padding-left:4px;">
+            <div style="font-size:11px;font-weight:700;color:#222;line-height:1.2;padding-left:4px;">
               • ${cleanItemName}
             </div>
-            <div class="receipt-row" style="display:flex;font-size:11px;font-weight:400;font-family:'Courier New',monospace;color:#000;width:100%;">
+            <div class="receipt-row" style="display:flex;font-size:11px;font-weight:700;font-family:'Courier New',monospace;color:#000;width:100%;">
               <span style="width:12%;text-align:center;flex-shrink:0;">${subQty}</span>
             </div>
           </div>

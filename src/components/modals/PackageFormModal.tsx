@@ -33,6 +33,7 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
 
   const [packageName, setPackageName] = useState('');
   const [packageNameSi, setPackageNameSi] = useState('');
+  const [packageNo, setPackageNo] = useState(''); // 🌟 Package No සඳහා අලුත් state එක
   const [searchKey, setSearchKey] = useState('');
   const [packagePrice, setPackagePrice] = useState<number | ''>('');
   const [packageDisplayPrice, setPackageDisplayPrice] = useState<number | ''>(''); // 🌟 Display (Strike-through) Price
@@ -41,11 +42,12 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
   const [productQuery, setProductQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  // 🌟 Edit mode එකේදී අගයන් ආපසු පිරවීම
+  // 🌟 Edit mode එකේදී අගයන් ආපසු පිරවීම සහ Create mode එකේදී අලුත් No එකක් fetch කිරීම
   React.useEffect(() => {
     if (editingProduct) {
       setPackageName(editingProduct.name || '');
       setPackageNameSi(editingProduct.nameSinhala || editingProduct.nameSi || '');
+      setPackageNo(editingProduct.no || ''); // 🌟 Edit mode: පවතින No එක පිරවීම
       setSearchKey(editingProduct.searchKey || '');
       setPackagePrice(Number(editingProduct.salesPrice) || '');
       setPackageDisplayPrice(Number(editingProduct.displayPrice) || '');
@@ -64,10 +66,26 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
     } else {
       setPackageName('');
       setPackageNameSi('');
+      setPackageNo('');
       setSearchKey('');
       setPackagePrice('');
+      setPackageDisplayPrice('');
       setPackageStock(10);
       setSelectedItems([]);
+
+      // 🌟 Create mode: Database එකෙන් මීළඟට එන්න ඕන No එක ලබාගැනීම
+      if (isOpen) {
+        const fetchNextNo = async () => {
+          try {
+            const res: any = await api.get('/products/next-no');
+            const nextNo = res?.data?.nextNo || res?.nextNo || '';
+            setPackageNo(nextNo);
+          } catch (err) {
+            console.warn('Failed to fetch next product no:', err);
+          }
+        };
+        fetchNextNo();
+      }
     }
   }, [editingProduct, isOpen]);
 
@@ -128,78 +146,69 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!packageName.trim() || !searchKey.trim() || !packagePrice || selectedItems.length === 0) {
-      toast.error('කරුණාකර Package නම, Short Code, මිල සහ අඩුම තරමේ අයිටම් එකක්වත් ඇතුළත් කරන්න.');
+    if (!packageNo.trim() || !packageName.trim() || !searchKey.trim() || !packagePrice || selectedItems.length === 0) {
+      toast.error('කරුණාකර Package No, නම, Short Code, මිල සහ අඩුම තරමේ අයිටම් එකක්වත් ඇතුළත් කරන්න.');
       return;
     }
 
     setIsSaving(true);
     try {
+      const cleanNo = packageNo.trim();
       const cleanKey = searchKey.trim().toUpperCase();
 
-    const payload = {
-      // 🌟 [FIX] 'no' field එක සඳහා අකුරු සහිත shortcode එක සෘජුව යැවීමෙන් වැළකී,
-      // එය system එක මඟින් හැසිරෙන සේ තබා Shortcode එක searchKey ලෙස පමණක් යැවීම
-      barcode: cleanKey,
-      name: packageName.trim(),
-      nameSinhala: packageNameSi.trim() || packageName.trim(),
-      searchKey: cleanKey, // මෙහි ඕනෑම අකුරක් හෝ අංකයක් (text/number) යැවිය හැක
-      salesPrice: Number(packagePrice),
-      displayPrice: packageDisplayPrice ? Number(packageDisplayPrice) : (totalCalculatedValue > Number(packagePrice) ? totalCalculatedValue : Number(packagePrice)),
-      cost: 0,
-      lastPrice: Number(packagePrice),
-      storeQty: Number(packageStock || 0),
-      salesType: 'Set',
-      productCategory: 'Packages',
-      isPackage: true,
-      packageItems: selectedItems.map((item) => ({
-        productId: item.productId,
-        name: item.name,
-        qty: item.qty,
-        originalPrice: item.originalPrice,
-      })),
-    };
+      const payload = {
+        no: cleanNo, // 🌟 User type කළ හෝ Auto-fetch වූ අංකය යැවීම
+        barcode: cleanKey,
+        name: packageName.trim(),
+        nameSinhala: packageNameSi.trim() || packageName.trim(),
+        searchKey: cleanKey,
+        salesPrice: Number(packagePrice),
+        displayPrice: packageDisplayPrice ? Number(packageDisplayPrice) : (totalCalculatedValue > Number(packagePrice) ? totalCalculatedValue : Number(packagePrice)),
+        cost: 0,
+        lastPrice: Number(packagePrice),
+        storeQty: Number(packageStock || 0),
+        salesType: 'Set',
+        productCategory: 'Packages',
+        isPackage: true,
+        packageItems: selectedItems.map((item) => ({
+          productId: item.productId,
+          name: item.name,
+          qty: item.qty,
+          originalPrice: item.originalPrice,
+        })),
+      };
 
-    // Edit mode නොවන අවස්ථාවලදී (Create mode) පමණක් නව sequential product no එකක් backend එකෙන් ලබාගැනීම
-    if (!editingProduct?.id) {
-      try {
-        const nextNoRes: any = await api.get('/products/next-no');
-        (payload as any).no = nextNoRes?.data?.nextNo || nextNoRes?.nextNo || String(Date.now()).slice(-6);
-      } catch {
-        (payload as any).no = String(Date.now()).slice(-6);
+      if (editingProduct?.id) {
+        // 🌟 Edit Mode — PUT request
+        const res: any = await api.put(`/products/${editingProduct.id}`, payload);
+        const updatedData = res?.data || res || payload;
+        
+        if (updateInventoryItem) {
+          updateInventoryItem(editingProduct.id, updatedData);
+        }
+        toast.success(`"${packageName}" Package එක සාර්ථකව යාවත්කාලීන විය!`);
+      } else {
+        // 🌟 Create Mode
+        await api.post('/products', payload);
+        toast.success(`"${packageName}" Package එක සාර්ථකව නිර්මාණය විය!`);
       }
-    } else if (editingProduct?.no) {
-      (payload as any).no = editingProduct.no;
-    }
 
-    if (editingProduct?.id) {
-      // 🌟 Edit Mode — PUT request එකක් ලෙස update කිරීම
-      const res: any = await api.put(`/products/${editingProduct.id}`, payload);
-      const updatedData = res?.data || res || payload;
-      
-      // Local inventory state එකද ක්ෂණිකව update කිරීම
-      if (updateInventoryItem) {
-        updateInventoryItem(editingProduct.id, updatedData);
-      }
-      toast.success(`"${packageName}" Package එක සාර්ථකව යාවත්කාලීන විය!`);
-    } else {
-      // 🌟 Create Mode
-      await api.post('/products', payload);
-      toast.success(`"${packageName}" Package එක සාර්ථකව නිර්මාණය විය!`);
-    }
-
-    if (refreshInventory) await refreshInventory();
-    if (onSuccess) onSuccess();
-    onClose();
+      if (refreshInventory) await refreshInventory();
+      if (onSuccess) onSuccess();
+      onClose();
 
       // Reset
       setPackageName('');
       setPackageNameSi('');
+      setPackageNo('');
       setSearchKey('');
       setPackagePrice('');
+      setPackageDisplayPrice('');
       setSelectedItems([]);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || err?.message || 'Package එක Save කිරීම අසාර්ථකයි.');
+      // 🌟 [FIX] Duplicate No එරර් එකක් ආවොත් අදාළ error message එකම පෙන්වීම
+      const errorMessage = err?.response?.data?.message || err?.message || 'Package එක Save කිරීම අසාර්ථකයි.';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -235,6 +244,32 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
           {/* Main info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
+              <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Package No (Sequence) *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 1001"
+                value={packageNo}
+                onChange={(e) => {
+                  // 🌟 අකුරු හෝ සංකේත යෙදීමෙන් වන error එක වළක්වා, අංක සහ අකුරු පමණක් (Alphanumeric) ගැනීමට
+                  const val = e.target.value.replace(/[^a-zA-Z0-9-]/g, '');
+                  setPackageNo(val);
+                }}
+                className={`w-full px-3 py-2 text-xs font-mono font-bold rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
+              />
+            </div>
+            <div>
+              <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Shortcode / Search Key *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. RC-SET"
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                className={`w-full px-3 py-2 text-xs font-mono font-bold uppercase rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-50 border-slate-300 text-amber-600'}`}
+              />
+            </div>
+            <div>
               <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Package Name (English) *</label>
               <input
                 type="text"
@@ -253,17 +288,6 @@ export const PackageFormModal: React.FC<PackageFormModalProps> = ({
                 value={packageNameSi}
                 onChange={(e) => setPackageNameSi(e.target.value)}
                 className={`w-full px-3 py-2 text-xs rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-              />
-            </div>
-            <div>
-              <label className={`block text-xs font-semibold mb-1 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>Shortcode / Number (Checkout Search) *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. RC-SET or 9001"
-                value={searchKey}
-                onChange={(e) => setSearchKey(e.target.value)}
-                className={`w-full px-3 py-2 text-xs font-mono font-bold uppercase rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-50 border-slate-300 text-amber-600'}`}
               />
             </div>
             <div>

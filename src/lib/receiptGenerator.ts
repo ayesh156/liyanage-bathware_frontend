@@ -113,7 +113,7 @@ export const generateReceiptHTML = (
         ? `<span style="font-family:'Courier New',monospace;font-size:11px;background:#000;color:#fff;padding:1px 4px;border-radius:2px;margin-right:4px;">[${pkgCode}]</span>`
         : '';
 
-      // 🌟 [PACKAGE SUB-ITEMS FORMATTER] Item font-size එක පොඩි කර, font-weight normal කර, dash ඉවත් කර ප්‍රමාණය පමණක් දැක්වීම
+      // 🌟 [PACKAGE SUB-ITEMS FORMATTER] Item font-size එක පොඩි කර, font-weight 700 (Bold) කර, dash ඉවත් කර ප්‍රමාණය පමණක් දැක්වීම
       const subItemsFormattedHtml = subItemsArray.map(itemStr => {
         const qtyMatch = itemStr.match(/\([xX](\d+(\.\d+)?)\)/);
         const subQty = qtyMatch ? qtyMatch[1] : '1';
@@ -121,10 +121,10 @@ export const generateReceiptHTML = (
 
         return `
           <div style="margin-top:2px;margin-bottom:2px;">
-            <div style="font-size:11px;font-weight:400;color:#222;line-height:1.2;padding-left:4px;">
+            <div style="font-size:11px;font-weight:700;color:#222;line-height:1.2;padding-left:4px;">
               • ${cleanItemName}
             </div>
-            <div class="receipt-row" style="display:flex;font-size:11px;font-weight:400;font-family:'Courier New',monospace;color:#000;width:100%;">
+            <div class="receipt-row" style="display:flex;font-size:11px;font-weight:700;font-family:'Courier New',monospace;color:#000;width:100%;">
               <span style="width:12%;text-align:center;flex-shrink:0;">${subQty}</span>
             </div>
           </div>
