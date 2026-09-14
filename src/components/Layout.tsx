@@ -45,8 +45,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="absolute -bottom-40 right-1/3 w-72 h-72 bg-blue-500/10 rounded-full blur-[100px]" />
       </div>
 
-      {/* Header */}
-      <header className={`sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-300 ${theme === 'dark' ? 'border-slate-800/50 bg-[#0a0f1a]/80' : 'border-slate-200 bg-white/90'}`}>
+      {/* Header — Higher z-index to overlay bottom dock modals */}
+      <header className={`sticky top-0 z-[60] border-b backdrop-blur-xl transition-colors duration-300 ${theme === 'dark' ? 'border-slate-800/50 bg-[#0a0f1a]/95' : 'border-slate-200 bg-white/95'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo and Brand */}

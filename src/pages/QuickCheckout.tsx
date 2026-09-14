@@ -140,9 +140,12 @@ export const QuickCheckout: React.FC = () => {
 
   const { categories, inventoryItems, addInventoryItem, refreshCategories, updateInventoryItem } = useCatalog();
 
-  // Derive flattenedProducts from mockProducts once for legacy product catalog
+// Derive flattenedProducts from mockProducts once for legacy product catalog
   const [products] = useState<Product[]>(() => mockProducts);
   const flattenedProducts = useMemo(() => flattenProducts(products), [products]);
+
+  // 🌟 [MOBILE PREVIEW STATE] Mobile එකේද Receipt Preview එක බලාගැනීම සඳහා State එක
+  const [showMobileReceiptPreview, setShowMobileReceiptPreview] = useState(false);
 
   // Build a live search index from inventoryItems for newly added products
   const inventorySearchIndex = useMemo(() => {
@@ -2265,7 +2268,7 @@ export const QuickCheckout: React.FC = () => {
   // ==================== MOBILE LAYOUT ====================
   if (isMobile) {
     return (
-      <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'} pb-40`}>
+      <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'} pb-72`}>
         <ShortcutMapOverlay
           isOpen={showShortcutMap}
           onClose={() => setShowShortcutMap(false)}
@@ -2276,86 +2279,95 @@ export const QuickCheckout: React.FC = () => {
           totalSteps={1}
         />
 
-        <div className={`sticky top-0 z-50 px-3 py-2.5 ${isDark ? 'bg-slate-800/98 backdrop-blur-lg border-b border-slate-700/50' : 'bg-slate-50/98 backdrop-blur-lg border-b border-slate-200 shadow-sm'}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+       {/* 🌟 [MOBILE HEADER REFACTOR] Single Sticky Container combining Top Nav, Checkboxes, and Search Bar */}
+        <div className={`sticky top-0 z-50 flex flex-col gap-3 pt-3 pb-3 ${isDark ? 'bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-black/20' : 'bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-sm'} shadow-lg`}>
+          
+          {/* 1. Top Navbar (Title & Actions) */}
+          <div className="flex items-center justify-between px-3">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/invoices')}
-                className={`p-2 -ml-1 rounded-xl transition-all active:scale-95 ${isDark ? 'active:bg-slate-700' : 'active:bg-slate-100'}`}
+                className={`p-1.5 -ml-1.5 rounded-xl transition-all active:scale-95 ${isDark ? 'active:bg-slate-800 text-slate-400' : 'active:bg-slate-100 text-slate-600'}`}
               >
-                <ArrowLeft className={`w-5 h-5 ${isDark ? 'text-slate-400' : 'text-slate-600'}`} />
+                <ArrowLeft className="w-5 h-5" />
               </button>
-              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/30">
-                <Zap className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h1 className={`text-base font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                  <Zap className="w-4 h-4 text-white" />
+                </div>
+                <h1 className={`text-[17px] font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
                   {t('quickCheckout.title')}
                 </h1>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {/* ── TRIPLE CHECKBOX FILTER ROW (Mobile) ── */}
-                  <label className={`flex items-center gap-1 cursor-pointer select-none text-[9px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <input
-                      type="checkbox"
-                      checked={searchBarcode}
-                      onChange={e => setSearchBarcode(e.target.checked)}
-                      className="accent-amber-500 w-2.5 h-2.5 rounded"
-                    />
-                    Barcode
-                  </label>
-                  <label className={`flex items-center gap-1 cursor-pointer select-none text-[9px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <input
-                      type="checkbox"
-                      checked={searchByKey}
-                      onChange={e => setSearchByKey(e.target.checked)}
-                      className="accent-amber-500 w-2.5 h-2.5 rounded"
-                    />
-                    Search Key
-                  </label>
-                  <label className={`flex items-center gap-1 cursor-pointer select-none text-[9px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <input
-                      type="checkbox"
-                      checked={searchByName}
-                      onChange={e => setSearchByName(e.target.checked)}
-                      className="accent-amber-500 w-2.5 h-2.5 rounded"
-                    />
-                    Product Name
-                  </label>
-                  <label className={`flex items-center gap-1 cursor-pointer select-none text-[9px] font-semibold ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                    <input
-                      type="checkbox"
-                      checked={searchByNo}
-                      onChange={e => setSearchByNo(e.target.checked)}
-                      className="accent-amber-500 w-2.5 h-2.5 rounded"
-                    />
-                    Product No
-                  </label>
-                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              {/* 🌟 Mobile Receipt Preview Open Button */}
+              <button
+                type="button"
+                onClick={() => setShowMobileReceiptPreview(true)}
+                className={`p-2 rounded-xl transition-all active:scale-95 ${
+                  items.length > 0
+                    ? isDark ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    : isDark ? 'bg-slate-800 text-slate-500 opacity-40' : 'bg-slate-100 text-slate-400 opacity-40'
+                }`}
+                title="View Bill Preview"
+              >
+                <Receipt className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`p-2 rounded-xl transition-all active:scale-95 ${soundEnabled ? 'text-emerald-500' : isDark ? 'text-slate-500' : 'text-slate-400'}`}
+                className={`p-2 rounded-xl transition-all active:scale-95 ${soundEnabled ? 'bg-emerald-500/10 text-emerald-500' : isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-400'}`}
               >
-                {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
               </button>
               <button
                 onClick={clearCart}
                 disabled={items.length === 0}
-                className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-30 text-red-500`}
+                className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-30 ${isDark ? 'bg-red-500/10 text-red-500' : 'bg-red-50 text-red-500'}`}
               >
-                <RotateCcw className="w-5 h-5" />
+                <RotateCcw className="w-4 h-4" />
               </button>
             </div>
           </div>
-        </div>
 
-        <div className={`sticky top-[52px] z-40 px-3 py-2 ${isDark ? 'bg-slate-900/98 backdrop-blur-lg' : 'bg-slate-50/98 backdrop-blur-lg'}`}>
-          {/* ── REMOVED: pending product notification ── */}
+          {/* 2. Search Filters (Modern Mobile Pills/Chips) */}
+          <div className="px-3 flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+            <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
+            {[
+              { id: 'barcode', label: 'Barcode', state: searchBarcode, setter: setSearchBarcode },
+              { id: 'key', label: 'Search Key', state: searchByKey, setter: setSearchByKey },
+              { id: 'name', label: 'Product Name', state: searchByName, setter: setSearchByName },
+              { id: 'no', label: 'Product No', state: searchByNo, setter: setSearchByNo },
+            ].map((filter) => (
+              <label 
+                key={filter.id} 
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border whitespace-nowrap cursor-pointer transition-all select-none flex-shrink-0 ${
+                  filter.state 
+                    ? (isDark ? 'bg-amber-500/15 border-amber-500/50 text-amber-400' : 'bg-amber-50 border-amber-300 text-amber-700') 
+                    : (isDark ? 'bg-slate-800/80 border-slate-700 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500')
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={filter.state}
+                  onChange={e => filter.setter(e.target.checked)}
+                  className="hidden"
+                />
+                <div className={`w-3 h-3 rounded-sm border flex items-center justify-center transition-all ${
+                  filter.state 
+                    ? (isDark ? 'bg-amber-500 border-amber-500' : 'bg-amber-500 border-amber-500') 
+                    : (isDark ? 'border-slate-500 bg-slate-800' : 'border-slate-300 bg-white')
+                }`}>
+                  {filter.state && <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7" /></svg>}
+                </div>
+                <span className="text-[11px] font-bold">{filter.label}</span>
+              </label>
+            ))}
+          </div>
 
-          <div className="flex gap-2">
+          {/* 3. Search Input & Add Product Button */}
+          <div className="px-3 flex gap-2">
             <div className="flex-1 relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                 <ScanLine className={`w-4 h-4 ${mobileSearchFocused ? 'text-amber-500' : isDark ? 'text-slate-500' : 'text-slate-400'}`} />
@@ -2370,7 +2382,6 @@ export const QuickCheckout: React.FC = () => {
                   e.stopPropagation();
                   (e.nativeEvent as Event).stopImmediatePropagation?.();
                   const val = e.target.value;
-                  // 🌟 Auto-add ඉවත් කරන ලදී. දැන් Enter එබූ විට පමණක් Add වේ.
                   const parsed = parseScanInput(val);
                   if (parsed?.qty && parsed?.code) {
                     const match = inventoryItems.find(
@@ -2407,7 +2418,6 @@ export const QuickCheckout: React.FC = () => {
                   setActiveMainSearchIndex(-1);
                 }}
                 onKeyDown={(e) => {
-                  // Let arrow keys, Enter, and Escape pass through to window-level handler
                   if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
                     e.stopPropagation();
                     (e.nativeEvent as Event).stopImmediatePropagation?.();
@@ -2426,35 +2436,85 @@ export const QuickCheckout: React.FC = () => {
                   setIsPaymentFocused(false);
                 }}
                 onBlur={() => setTimeout(() => setMobileSearchFocused(false), 200)}
-                className={`w-full pl-9 pr-9 py-2 text-sm border-2 rounded-xl focus:outline-none transition-all ${mobileSearchFocused
+                className={`w-full pl-9 pr-9 py-2.5 text-[13px] font-semibold border-2 rounded-xl focus:outline-none transition-all ${mobileSearchFocused
                   ? isDark
-                    ? 'border-amber-500 bg-slate-800 text-white ring-2 ring-amber-500/20'
-                    : 'border-amber-500 bg-white text-slate-900 ring-2 ring-amber-100'
+                    ? 'border-amber-500 bg-slate-800 text-white ring-4 ring-amber-500/10'
+                    : 'border-amber-500 bg-white text-slate-900 ring-4 ring-amber-500/10'
                   : isDark
                     ? 'border-slate-700 bg-slate-800/80 text-white placeholder-slate-500'
-                    : 'border-slate-200 bg-white text-slate-900 placeholder-slate-400'
+                    : 'border-slate-300 bg-slate-50 text-slate-900 placeholder-slate-400'
                   }`}
+                autoComplete="off"
               />
               {productSearch && (
                 <button
-                  onClick={() => { setProductSearch(''); }}
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-xl active:scale-95 ${isDark ? 'active:bg-slate-700 text-slate-400' : 'active:bg-slate-200 text-slate-500'}`}
+                  onClick={() => {
+                    setProductSearch('');
+                    setSelectedProductIndex(-1);
+                    searchInputRef.current?.focus();
+                  }}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg active:scale-95 ${isDark ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-600'}`}
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-            {/* ── REMOVED: Quantity field next to search ── */}
+
+            <button
+              onClick={() => setShowProductFormModal(true)}
+              className={`flex items-center justify-center w-[46px] h-[46px] rounded-xl font-bold transition-all bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20 active:scale-95 flex-shrink-0`}
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
+        {/* 🌟 [MOBILE BOTTOM SHEET SEARCH RESULTS] පිටත click කළ විට වැසී නොයන ලෙස Backdrop click ඉවත් කර ඇත */}
         {(filteredProducts.length > 0 || (productSearch && filteredProducts.length === 0)) && (
-          <div className="px-3 mb-2">
-            <div className={`rounded-xl border overflow-hidden ${isDark ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-white shadow-sm'}`}>
-              {filteredProducts.length > 0 ? (
-                <div className="max-h-[40vh] overflow-y-auto">
-                  {filteredProducts.map((flatProduct, index) => (
-                    <button
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+            {/* 🌟 [FIX] Backdrop click හරහා close වීම සම්පූර්ණයෙන්ම ඉවත් කර ඇත (පිටත click කළත් close නොවේ) */}
+
+            {/* Bottom Sheet Container */}
+            <div className={`relative z-10 w-full max-w-lg rounded-t-3xl border-t border-x flex flex-col max-h-[75vh] h-[75vh] overflow-hidden shadow-2xl ${
+              isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}>
+              
+              {/* Sheet Header with Close Button */}
+              <div className={`flex items-center justify-between px-4 py-3 border-b flex-shrink-0 ${
+                isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
+              }`}>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500 flex-shrink-0">
+                    <Search className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-bold truncate">
+                      Search Results: "{productSearch}"
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      {filteredProducts.length} items found
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProductSearch('');
+                    setSelectedProductIndex(-1);
+                  }}
+                  className={`p-1.5 rounded-xl transition-colors ${
+                    isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Sheet Products List */}
+              <div className={`flex-1 overflow-y-auto p-2 divide-y ${isDark ? 'divide-slate-800/40 bg-slate-950/20' : 'divide-slate-100 bg-slate-50/50'}`}>
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((flatProduct, index) => (
+                    <div
                       key={flatProduct.flatId}
                       ref={(el) => {
                         if (el) productItemRefs.current.set(index, el);
@@ -2472,114 +2532,111 @@ export const QuickCheckout: React.FC = () => {
                           toast.error(t('quickCheckout.insufficientStock'));
                         }
                       }}
-                      className={`w-full flex items-center gap-2 p-2.5 text-left transition-all active:scale-[0.98] border-b last:border-b-0 ${index === selectedProductIndex
-                        ? isDark ? 'bg-amber-500/20' : 'bg-amber-50'
-                        : isDark ? 'active:bg-slate-700/70 border-slate-700/50' : 'active:bg-slate-50 border-slate-100'
-                        }`}
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition-all active:bg-amber-500/10 cursor-pointer ${
+                        index === selectedProductIndex
+                          ? isDark ? 'bg-amber-500/20' : 'bg-amber-50'
+                          : ''
+                      }`}
                     >
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isDark ? 'bg-slate-700' : 'bg-slate-100'}`}>
-                        <Package className={`w-4 h-4 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <ProductNameTooltip name={flatProduct.displayName} nameSi={(flatProduct.product as any)?.nameAlt}>
-                          <p className={`font-semibold text-xs truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                          isDark ? 'bg-slate-800 text-slate-400' : 'bg-white border border-slate-200 text-slate-500'
+                        }`}>
+                          <Package className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-xs truncate leading-tight">
                             {isSinhala ? (flatProduct.product.nameAlt || flatProduct.displayName) : flatProduct.displayName}
                           </p>
-                        </ProductNameTooltip>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {flatProduct.displaySku}
-                          </span>
-                          <span className={`text-[10px] px-1 py-0.5 rounded ${flatProduct.stock > 10
-                            ? 'bg-emerald-500/10 text-emerald-500'
-                            : flatProduct.stock > 0
-                              ? 'bg-amber-500/10 text-amber-500'
-                              : 'bg-red-500/10 text-red-500'
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[9px] font-mono text-slate-400 font-semibold">
+                              {flatProduct.displaySku}
+                            </span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                              flatProduct.stock > 10
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                : flatProduct.stock > 0
+                                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                                  : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
                             }`}>
-                            {flatProduct.stock}
-                          </span>
+                              {flatProduct.stock} in stock
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        {flatProduct.hasDiscount && flatProduct.discountedPrice ? (
-                          <>
-                            <p className={`text-[10px] line-through ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                              Rs. {flatProduct.retailPrice.toLocaleString()}
-                            </p>
-                            <p className="text-xs font-bold text-pink-500">
-                              Rs. {flatProduct.discountedPrice.toLocaleString()}
-                            </p>
-                          </>
-                        ) : (
-                          <p className={`text-xs font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+
+                      {/* Price and Add Control */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs font-black font-mono">
                             Rs. {flatProduct.retailPrice.toLocaleString()}
                           </p>
-                        )}
-                      </div>
-                      {/* ── INLINE QUANTITY CONTROLS (mobile search) ── */}
-                      <div className={`flex items-center gap-0.5 p-0.5 rounded-lg flex-shrink-0 ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            const currentQty = getItemCartQuantity(items, flatProduct.flatId);
-                            if (currentQty > 0) {
-                              const cartItem = items.find(i => i.productId === flatProduct.flatId);
-                              if (cartItem) {
-                                const newQty = decrementQuantity(cartItem.quantity, 0.01);
-                                if (newQty <= 0) {
-                                  removeItem(cartItem.id);
-                                } else {
-                                  updateItemQuantity(cartItem.id, newQty);
+                        </div>
+
+                        {/* Inline Controls */}
+                        <div className={`flex items-center gap-0.5 p-0.5 rounded-lg border ${
+                          isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+                        }`}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              const currentQty = getItemCartQuantity(items, flatProduct.flatId);
+                              if (currentQty > 0) {
+                                const cartItem = items.find(i => i.productId === flatProduct.flatId);
+                                if (cartItem) {
+                                  const newQty = decrementQuantity(cartItem.quantity, 0.01);
+                                  if (newQty <= 0) {
+                                    removeItem(cartItem.id);
+                                  } else {
+                                    updateItemQuantity(cartItem.id, newQty);
+                                  }
                                 }
                               }
-                            }
-                          }}
-                          className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition-all ${getItemCartQuantity(items, flatProduct.flatId) > 0
-                            ? isDark ? 'bg-slate-700 hover:bg-slate-600 text-white' : 'bg-white hover:bg-slate-200 text-slate-700 shadow-sm'
-                            : isDark ? 'text-slate-600 cursor-default' : 'text-slate-300 cursor-default'
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold transition-all ${
+                              getItemCartQuantity(items, flatProduct.flatId) > 0
+                                ? isDark ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-700 shadow-sm'
+                                : 'opacity-30 cursor-not-allowed'
                             }`}
-                          disabled={getItemCartQuantity(items, flatProduct.flatId) <= 0}
-                        >
-                          <Minus className="w-2.5 h-2.5" />
-                        </button>
-                        <span className={`w-5 text-center font-bold text-[9px] tabular-nums ${getItemCartQuantity(items, flatProduct.flatId) > 0
-                          ? 'text-amber-500'
-                          : isDark ? 'text-slate-500' : 'text-slate-400'
-                          }`}>
-                          {getItemCartQuantity(items, flatProduct.flatId)}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            if (flatProduct.stock > 0) {
-                              addProductToCart(flatProduct, 1);
-                              playBeep('add');
-                            } else {
-                              playBeep('error');
-                              toast.error(t('quickCheckout.insufficientStock'));
-                            }
-                          }}
-                          className={`w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold transition-all ${isDark
-                            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
-                            : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700'
-                            }`}
-                        >
-                          <Plus className="w-2.5 h-2.5" />
-                        </button>
+                            disabled={getItemCartQuantity(items, flatProduct.flatId) <= 0}
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-5 text-center font-bold text-xs font-mono text-amber-500 tabular-nums">
+                            {getItemCartQuantity(items, flatProduct.flatId)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              if (flatProduct.stock > 0) {
+                                addProductToCart(flatProduct, 1);
+                                playBeep('add');
+                              } else {
+                                playBeep('error');
+                                toast.error(t('quickCheckout.insufficientStock'));
+                              }
+                            }}
+                            className="w-6 h-6 rounded-md flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-all font-bold"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 text-center">
-                  <Package className={`w-10 h-10 mx-auto mb-2 ${isDark ? 'text-slate-600' : 'text-slate-300'}`} />
-                  <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
-                    {t('quickCheckout.noProductsFound')}
-                  </p>
-                </div>
-              )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center">
+                    <Package className="w-10 h-10 mx-auto mb-2 text-slate-500 opacity-40" />
+                    <p className="text-xs font-medium text-slate-400">
+                      {t('quickCheckout.noProductsFound')}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -2638,23 +2695,63 @@ export const QuickCheckout: React.FC = () => {
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <ProductNameTooltip name={item.productName} nameSinhala={item.productNameSi}>
-                          <p className={`font-semibold text-xs truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                            {isSinhala ? (item.productNameSi || item.productName) : item.productName}
-                          </p>
-                        </ProductNameTooltip>
-                        <div className={`text-xs flex items-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {(() => {
+                          const rawName = isSinhala ? (item.productNameSi || item.productName) : item.productName;
+                          const isPkg = rawName.includes('{') && rawName.includes('}');
+                          let displayTitle = rawName;
+                          let pkgSubItems: string[] = [];
+
+                          if (isPkg) {
+                            const openIdx = rawName.indexOf('{');
+                            const closeIdx = rawName.lastIndexOf('}');
+                            displayTitle = openIdx > -1 ? rawName.slice(0, openIdx).trim() : rawName;
+                            const rawSubList = openIdx > -1 && closeIdx > openIdx ? rawName.slice(openIdx + 1, closeIdx).trim() : '';
+                            pkgSubItems = rawSubList ? rawSubList.split('•').map((s) => s.trim()).filter(Boolean) : [];
+                          }
+
+                          return (
+                            <>
+                              <p className={`font-bold text-xs truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                {displayTitle}
+                              </p>
+
+                              {/* 🌟 Mobile View එකේද Package Sub-items ලැයිස්තුව පැහැදිලිව පෙන්වීම */}
+                              {pkgSubItems.length > 0 && (
+                                <div className="mt-1 space-y-0.5 pl-1.5 border-l-2 border-amber-500/30 my-1">
+                                  {pkgSubItems.map((sub, sIdx) => {
+                                    const qtyMatch = sub.match(/\([xX](\d+(\.\d+)?)\)/);
+                                    const subQty = qtyMatch ? qtyMatch[1] : '1';
+                                    const cleanItemName = sub.replace(/\([xX]\d+(\.\d+)?\)/g, '').trim();
+
+                                    return (
+                                      <div key={sIdx} className="flex items-center justify-between text-[10px]">
+                                        <span className={`truncate pr-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                                          • {cleanItemName}
+                                        </span>
+                                        <span className="font-mono font-bold text-amber-500 flex-shrink-0">
+                                          {subQty}×
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+
+                        <div className={`text-xs flex items-center gap-1.5 mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                           {item.unitPrice !== item.originalPrice && (
-                            <span className="line-through text-[10px]">
-                              Rs. {item.originalPrice.toLocaleString()}
+                            <span className="line-through text-[10px] opacity-60">
+                              Rs. {Number(item.originalPrice || item.displayPrice).toLocaleString()}
                             </span>
                           )}
-                          <span className={item.unitPrice !== item.originalPrice ? 'text-emerald-500 font-medium' : ''}>
-                            Rs. {item.unitPrice.toLocaleString()}
+                          <span className="text-emerald-500 font-bold font-mono">
+                            Rs. {Number(item.salesPrice || item.ourPrice || item.unitPrice).toLocaleString()}
                           </span>
-                          <span>× {item.quantity}</span>
+                          <span className="text-[10px]">× {item.quantity}</span>
                         </div>
                       </div>
 
@@ -2689,37 +2786,272 @@ export const QuickCheckout: React.FC = () => {
           </div>
         </div>
 
-        <div className={`fixed bottom-0 left-0 right-0 z-50 ${isDark ? 'bg-slate-800/98 backdrop-blur-xl border-t border-slate-700' : 'bg-white/98 backdrop-blur-xl border-t border-slate-200 shadow-2xl'}`}>
-          <div className="flex justify-center pt-1.5 pb-0.5">
-            <div className={`w-8 h-0.5 rounded-full ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+        {/* 🌟 [MOBILE QUICK CATEGORIES] Mobile view එකටද Categories තීරුව පහසුවෙන් click කළ හැකි ලෙස එකතු කිරීම */}
+        <div className="px-3 mb-6">
+          <div className={`rounded-xl border p-2.5 ${isDark ? 'bg-slate-800/30 border-slate-700/50' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className={`text-[11px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                {t('quickCheckout.quickCategories', 'Quick Categories')}
+              </span>
+              <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full ${isDark ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-500'}`}>
+                {quickCheckoutCategories.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {quickCheckoutCategories.map((cat) => {
+                const categoryProducts = categoryProductMap.get(cat.name) || [];
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      const prods = categoryProductMap.get(cat.name) || [];
+                      if (prods.length > 0) {
+                        // 🌟 Anchor එකක් නැතිව mobile screen එකට කෙළින්ම popover විවෘත කිරීම
+                        setCategoryPopoverAnchor(new DOMRect(16, 80, 300, 300));
+                        setActiveCategoryPopover(cat.name);
+                        setCategoryPopoverFilter('');
+                        setActiveCategoryItemIndex(0);
+                      } else {
+                        toast.info(`${getCategoryDisplayName(cat, cat.name)} - ${t('quickCheckout.noProductsFound')}`);
+                      }
+                    }}
+                    className={`p-2 rounded-xl flex flex-col items-center justify-center text-center transition-all active:scale-95 border ${
+                      isDark ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200 shadow-sm'
+                    }`}
+                  >
+                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white mb-1 shadow-sm">
+                      <Package className="w-3.5 h-3.5" />
+                    </div>
+                    <span className={`text-[10px] font-bold truncate max-w-full ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
+                      {getCategoryDisplayName(cat, cat.name)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+       {/* 🌟 [SOLID MOBILE CHECKOUT DOCK] 100% Solid Background (No Transparency), z-40 to prevent sidebar clashes */}
+        <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all ${isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white border-t border-slate-200'} shadow-[0_-10px_30px_rgba(0,0,0,0.25)]`}>
+          <div className="flex justify-center pt-2 pb-1">
+            <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
           </div>
 
-          <div className="px-3 pb-2">
-            <div className="grid grid-cols-2 gap-1.5">
-              <div className={`flex rounded-lg overflow-hidden border ${isDark ? 'border-slate-700' : 'border-slate-200'}`}>
+          <div className="px-3.5 pb-4 space-y-2.5">
+            {/* 1. Live Bill Summary Bar */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className={`text-[11px] font-medium tracking-wide uppercase ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {t('invoice.totalAmount', 'Total Amount')}
+                </span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xs font-bold text-amber-500">Rs.</span>
+                  <span className={`text-xl font-black font-mono tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {computedFinalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Customer Profit Badge or Subtotal Info */}
+              {computedCustomerProfit > 0 ? (
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    {t('quickCheckout.customerProfit', 'ලාභය')}: Rs. {computedCustomerProfit.toFixed(0)}
+                  </span>
+                  {computedDiscount > 0 && (
+                    <p className="text-[10px] text-red-400 font-mono mt-0.5">Dis: -Rs.{computedDiscount}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="text-right">
+                  <span className={`text-xs font-semibold font-mono ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Sub: Rs. {computedSubtotal.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Controls Grid: Payment Method & Discount */}
+            <div className="grid grid-cols-12 gap-2">
+              <div className={`col-span-7 flex p-1 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
                 <button
+                  type="button"
                   onClick={() => { setPaymentMethod('cash'); playBeep('add'); }}
-                  className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-all ${paymentMethod === 'cash'
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                    : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-600'
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${paymentMethod === 'cash'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                     }`}
                 >
                   <Banknote className="w-3.5 h-3.5" />
-                  {t('invoice.cash')}
+                  {t('invoice.cash', 'Cash')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setPaymentMethod('credit'); playBeep('add'); }}
-                  className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium transition-all ${paymentMethod === 'credit'
-                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
-                    : isDark ? 'bg-slate-700/50 text-slate-400' : 'bg-slate-50 text-slate-600'
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${paymentMethod === 'credit'
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm'
+                      : isDark ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
                     }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  {t('quickCheckout.credit')}
+                  {t('quickCheckout.credit', 'Credit')}
                 </button>
               </div>
 
-              <div className={`flex items-center gap-1.5 px-2 rounded-lg border ${isDark ? 'border-slate-700 bg-slate-700/50' : 'border-slate-200 bg-slate-50'}`}>
+              <div className={`col-span-5 flex items-center gap-1.5 px-2.5 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
+                <Percent className={`w-3.5 h-3.5 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
+                <input
+                  ref={discountInputRef}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max={computedSubtotal}
+                  value={discount || ''}
+                  onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                  placeholder={t('quickCheckout.discount', 'Discount')}
+                  className="w-full py-1.5 text-xs font-bold bg-transparent focus:outline-none placeholder-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* 3. Received Amount & Balance */}
+            <div className="flex items-center gap-2">
+              <div className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-white' : 'bg-emerald-50/50 border-emerald-200 text-slate-900'}`}>
+                <Banknote className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <input
+                  ref={receivedAmountInputRef}
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  value={receivedAmount || ''}
+                  onChange={(e) => setReceivedAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                  placeholder={t('invoice.receivedAmount', 'Received Amount')}
+                  className="w-full text-xs font-bold font-mono bg-transparent focus:outline-none placeholder-slate-400"
+                />
+              </div>
+
+              {receivedAmount > 0 && (
+                <div className={`px-2.5 py-2 rounded-xl border flex-shrink-0 text-right ${
+                  changeAmount >= 0 
+                    ? isDark ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'bg-emerald-100 border-emerald-300 text-emerald-800'
+                    : isDark ? 'bg-rose-500/15 border-rose-500/40 text-rose-400' : 'bg-rose-100 border-rose-300 text-rose-800'
+                }`}>
+                  <span className="text-[9px] font-bold block leading-none">
+                    {changeAmount >= 0 ? 'ඉතිරිය' : 'හිඟය'}
+                  </span>
+                  <span className="text-xs font-black font-mono whitespace-nowrap">
+                    Rs. {Math.abs(changeAmount).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Action Buttons Grid (Single balanced row, duplicate button eliminated) */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={items.length === 0 || isProcessing}
+                className={`py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                  items.length > 0
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
+                    : isDark ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                {isProcessing ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Printer className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{editInvoiceId ? t('quickCheckout.updateAndPrint', 'Update & Print') : t('quickCheckout.checkoutAndPrint', 'Print')}</span>
+                    <span className="text-[10px] opacity-70 font-mono">F12</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={editInvoiceId ? handleUpdateInvoice : handleQuickSave}
+                disabled={items.length === 0 || isProcessing}
+                className={`py-2.5 px-2 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                  items.length > 0
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20'
+                    : isDark ? 'bg-slate-800 text-slate-600 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{editInvoiceId ? t('quickCheckout.updateInvoice', 'Update Invoice') : t('quickCheckout.quickSave', 'Quick Save')}</span>
+                <span className="text-[10px] opacity-70 font-mono">F9</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 🌟 [FIX: PERMANENT SOLID MOBILE BOTTOM BAR] Always visible, never cut off, 100% solid color */}
+        <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all ${isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white border-t border-slate-200 shadow-2xl'}`}>
+          <div className="flex justify-center pt-1.5 pb-0.5">
+            <div className={`w-8 h-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
+          </div>
+
+          <div className="px-3 pb-3 space-y-2">
+            {/* Live Bill Total & Savings Summary */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {t('invoice.totalAmount', 'TOTAL AMOUNT')}
+                </span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-amber-500">Rs.</span>
+                  <span className={`text-xl font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {computedFinalTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {computedCustomerProfit > 0 && (
+                <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-right">
+                  <span className="text-[10px] font-bold text-emerald-500 block leading-tight">
+                    {t('quickCheckout.customerProfit', 'ලාභය')}: Rs. {computedCustomerProfit.toFixed(0)}
+                  </span>
+                  {computedDiscount > 0 && (
+                    <span className="text-[9px] text-red-400 font-mono">Dis: -Rs.{computedDiscount}</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Payment Method & Discount */}
+            <div className="grid grid-cols-12 gap-1.5">
+              <div className={`col-span-7 flex p-0.5 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                <button
+                  type="button"
+                  onClick={() => { setPaymentMethod('cash'); playBeep('add'); }}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    paymentMethod === 'cash'
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-sm'
+                      : isDark ? 'text-slate-400' : 'text-slate-600'
+                  }`}
+                >
+                  <Banknote className="w-3.5 h-3.5" />
+                  {t('invoice.cash', 'Cash')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPaymentMethod('credit'); playBeep('add'); }}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    paymentMethod === 'credit'
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm'
+                      : isDark ? 'text-slate-400' : 'text-slate-600'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  {t('quickCheckout.credit', 'Credit')}
+                </button>
+              </div>
+
+              <div className={`col-span-5 flex items-center gap-1 px-2 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}>
                 <Percent className={`w-3 h-3 flex-shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`} />
                 <input
                   ref={discountInputRef}
@@ -2729,13 +3061,16 @@ export const QuickCheckout: React.FC = () => {
                   max={computedSubtotal}
                   value={discount || ''}
                   onChange={(e) => setDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
-                  placeholder={t('quickCheckout.discount')}
-                  className={`flex-1 py-2 text-xs font-medium bg-transparent focus:outline-none ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+                  placeholder={t('quickCheckout.discount', 'Discount')}
+                  className="w-full py-1 text-xs font-bold bg-transparent focus:outline-none placeholder-slate-500"
                 />
               </div>
+            </div>
 
-              <div className={`flex items-center gap-1.5 px-2 rounded-lg border ${isDark ? 'border-slate-700 bg-green-900/20' : 'border-green-200 bg-green-50'}`}>
-                <Banknote className={`w-3 h-3 flex-shrink-0 ${isDark ? 'text-green-400' : 'text-green-500'}`} />
+            {/* Received Amount & Change Badge */}
+            <div className="flex items-center gap-2">
+              <div className={`flex-1 flex items-center gap-2 px-3 py-1.5 rounded-xl border ${isDark ? 'bg-emerald-950/20 border-emerald-500/30 text-white' : 'bg-emerald-50/50 border-emerald-200 text-slate-900'}`}>
+                <Banknote className="w-4 h-4 text-emerald-500 flex-shrink-0" />
                 <input
                   ref={receivedAmountInputRef}
                   type="number"
@@ -2743,56 +3078,296 @@ export const QuickCheckout: React.FC = () => {
                   min="0"
                   value={receivedAmount || ''}
                   onChange={(e) => setReceivedAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                  placeholder={t('invoice.receivedAmount')}
-                  className={`flex-1 py-2 text-xs font-medium bg-transparent focus:outline-none ${isDark ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
+                  placeholder={t('invoice.receivedAmount', 'Received Amount')}
+                  className="w-full text-xs font-bold font-mono bg-transparent focus:outline-none placeholder-slate-400"
                 />
-                {receivedAmount > 0 && (
-                  <span className={`text-xs font-bold ${changeAmount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    Δ {changeAmount.toLocaleString()}
-                  </span>
-                )}
               </div>
 
+              {receivedAmount > 0 && (
+                <div className={`px-2.5 py-1 rounded-xl border flex-shrink-0 text-right ${
+                  changeAmount >= 0 
+                    ? isDark ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400' : 'bg-emerald-100 border-emerald-300 text-emerald-800'
+                    : isDark ? 'bg-rose-500/15 border-rose-500/40 text-rose-400' : 'bg-rose-100 border-rose-300 text-rose-800'
+                }`}>
+                  <span className="text-[9px] font-bold block leading-none">
+                    {changeAmount >= 0 ? 'ඉතිරිය' : 'හිඟය'}
+                  </span>
+                  <span className="text-xs font-black font-mono whitespace-nowrap">
+                    Rs. {Math.abs(changeAmount).toLocaleString()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons: Print + Quick Save (F9) */}
+            <div className="grid grid-cols-2 gap-2">
               <button
+                type="button"
                 onClick={handleCheckout}
                 disabled={items.length === 0 || isProcessing}
-                className={`py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${items.length > 0
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30'
-                  : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
+                className={`py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                  items.length > 0
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/20'
+                    : isDark ? 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
               >
                 {isProcessing ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {t('quickCheckout.checkoutAndPrint')}
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>{editInvoiceId ? t('quickCheckout.updateAndPrint', 'Update & Print') : t('quickCheckout.checkoutAndPrint', 'Checkout & Print')}</span>
                   </>
                 )}
               </button>
+
+              <button
+                type="button"
+                onClick={editInvoiceId ? handleUpdateInvoice : handleQuickSave}
+                disabled={items.length === 0 || isProcessing}
+                className={`py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${
+                  items.length > 0
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/20'
+                    : isDark ? 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>{editInvoiceId ? t('quickCheckout.updateInvoice', 'Update Invoice') : t('quickCheckout.quickSave', 'Quick Save')}</span>
+              </button>
             </div>
-            {/* ── Update Invoice button (mobile, visible only in Edit Mode) ── */}
-            {editInvoiceId && (
-              <div className="mt-1.5">
-                <button
-                  onClick={handleUpdateInvoice}
-                  disabled={items.length === 0 || isProcessing}
-                  className={`w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${items.length > 0
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
-                    : isDark ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                    }`}
-                >
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  {t('quickCheckout.updateInvoice')}
-                </button>
-              </div>
-            )}
           </div>
         </div>
+
+        {/* 🌟 Mobile Invoice Preview Modal */}
+        {showMobileReceiptPreview && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 bg-black/70 backdrop-blur-sm animate-fade-in">
+            <div className={`w-full max-w-sm rounded-2xl border flex flex-col max-h-[90vh] overflow-hidden ${isDark ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'}`}>
+              <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-amber-500" />
+                  <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>Live Invoice Preview</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMobileReceiptPreview(false)}
+                  className={`p-1 rounded-lg ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2 bg-slate-950/30">
+                <ThermalReceiptPreview
+                  items={items}
+                  discount={computedDiscount}
+                  receivedAmount={receivedAmount}
+                  paymentMethod={paymentMethod}
+                  subtotal={computedSubtotal}
+                  total={computedFinalTotal}
+                  customer={selectedCustomerId !== 'walk-in' ? (findCustomerById(selectedCustomerId) ?? null) : null}
+                  invoiceNumber={previewInvoiceNumber}
+                  language={isSinhala ? 'si' : 'en'}
+                  cashierName={currentUser?.name || 'Admin User'}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🌟 [MOBILE CATEGORY POPUP MODAL] Mobile එකේදී Category එකක් click කළ විට විවෘත වන නවීන Bottom Sheet එක */}
+        {activeCategoryPopover && (
+          <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+            <div className={`w-full max-w-lg rounded-t-3xl sm:rounded-2xl border flex flex-col max-h-[85vh] h-[85vh] overflow-hidden shadow-2xl ${isDark ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+              
+              {/* Category Header */}
+              <div className={`flex items-center justify-between px-4 py-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+                    <Package className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold truncate">
+                      {getCategoryDisplayName(activeCategoryEntity, activeCategoryPopover)}
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      {categoryProductMap.get(activeCategoryPopover)?.length || 0} items
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setActiveCategoryPopover(null); setCategoryPopoverFilter(''); }}
+                  className={`p-1.5 rounded-xl transition-colors ${isDark ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'}`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Category Items Filter Search Input */}
+              <div className={`p-3 border-b ${isDark ? 'border-slate-800' : 'border-slate-100'}`}>
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={categoryPopoverFilter}
+                    onChange={(e) => setCategoryPopoverFilter(e.target.value)}
+                    placeholder={`Filter ${activeCategoryPopover} items...`}
+                    className={`w-full pl-9 pr-8 py-2 text-xs font-semibold rounded-xl border focus:outline-none transition-all ${
+                      isDark ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
+                  />
+                  {categoryPopoverFilter && (
+                    <button
+                      onClick={() => setCategoryPopoverFilter('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 p-0.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+      {/* Category Products List */}
+              <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-800/30">
+                {(() => {
+                  const currentCategory = activeCategoryPopover || '';
+                  const prods = (categoryProductMap.get(currentCategory) || []).filter((item: any) => {
+                    if (!categoryPopoverFilter.trim()) return true;
+                    const q = categoryPopoverFilter.toLowerCase().trim();
+                    return (
+                      item.name?.toLowerCase().includes(q) ||
+                      item.nameSinhala?.toLowerCase().includes(q) ||
+                      item.searchKey?.toLowerCase().includes(q) ||
+                      (item.barcode && item.barcode.toLowerCase().includes(q)) ||
+                      (item.no && String(item.no).toLowerCase().includes(q))
+                    );
+                  });
+
+                  if (prods.length === 0) {
+                    return (
+                      <div className="p-8 text-center">
+                        <Package className="w-10 h-10 mx-auto mb-2 text-slate-500 opacity-40" />
+                        <p className="text-xs font-medium text-slate-400">
+                          {t('quickCheckout.noProductsFound')}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return prods.map((prod: any) => {
+                    const sinhalaName = prod.nameSinhala || prod.nameSi || prod.name;
+                    const fp: FlattenedProduct = {
+                      flatId: prod.id,
+                      product: { nameAlt: sinhalaName, sku: prod.searchKey, category: activeCategoryPopover } as any,
+                      displayName: prod.name,
+                      displaySku: prod.searchKey,
+                      retailPrice: Number(prod.salesPrice),
+                      wholesalePrice: Number(prod.displayPrice),
+                      costPrice: Number(prod.cost),
+                      stock: Number(prod.storeQty),
+                      hasDiscount: false,
+                    } as FlattenedProduct;
+
+                    const inCartQty = getItemCartQuantity(items, prod.id);
+
+                    return (
+                      <div
+                        key={prod.id}
+                        onClick={() => {
+                          if (prod.storeQty > 0) {
+                            addOneToCart(fp);
+                            playBeep('add');
+                            toast.success(`${isSinhala ? sinhalaName : prod.name} ${t('quickCheckout.addedToCart')}`, { autoClose: 1500 });
+                          } else {
+                            playBeep('error');
+                            toast.error(t('quickCheckout.insufficientStock'));
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl flex items-center justify-between gap-2 transition-all active:bg-amber-500/10 cursor-pointer ${
+                          inCartQty > 0 ? (isDark ? 'bg-amber-500/10' : 'bg-amber-50/60') : ''
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="font-bold text-xs truncate leading-tight">
+                            {isSinhala ? sinhalaName : prod.name}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] font-mono text-slate-400 font-semibold">
+                              {prod.searchKey}
+                            </span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-md ${
+                              prod.storeQty > 10
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                                : prod.storeQty > 0
+                                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                                  : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                            }`}>
+                              {prod.storeQty} in stock
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 flex-shrink-0">
+                          <span className="text-xs font-black font-mono">
+                            Rs. {Number(prod.salesPrice).toLocaleString()}
+                          </span>
+
+                          <div className={`flex items-center gap-1 p-1 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (inCartQty > 0) {
+                                  const cartItem = items.find(i => i.productId === prod.id);
+                                  if (cartItem) {
+                                    const newQty = decrementQuantity(cartItem.quantity, 0.01);
+                                    if (newQty <= 0) removeItem(cartItem.id);
+                                    else updateItemQuantity(cartItem.id, newQty);
+                                  }
+                                }
+                              }}
+                              className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                inCartQty > 0
+                                  ? isDark ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 shadow-sm'
+                                  : 'opacity-30 cursor-not-allowed'
+                              }`}
+                              disabled={inCartQty <= 0}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-5 text-center font-bold text-xs font-mono text-amber-500 tabular-nums">
+                              {inCartQty}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (prod.storeQty > 0) {
+                                  addProductToCart(fp, 1);
+                                  playBeep('add');
+                                } else {
+                                  playBeep('error');
+                                  toast.error(t('quickCheckout.insufficientStock'));
+                                }
+                              }}
+                              className="w-6 h-6 rounded-lg flex items-center justify-center bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 font-bold"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+                </div>
+              </div>
+            </div>
+        )}
       </div>
     );
   }
-
+  
+       
   // ==================== DESKTOP LAYOUT (optimized) ====================
   return (
     <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'}`}>
@@ -3839,15 +4414,24 @@ export const QuickCheckout: React.FC = () => {
                   />
                 )}
 
-                {/* ── CATEGORY PRODUCT POPOVER (Updated: uses triple-checkbox search + strip spaces) ── */}
-                {activeCategoryPopover && categoryPopoverAnchor && (
+                {/* ── CATEGORY PRODUCT POPOVER (Mobile & Desktop Unified Safe Spawn) ── */}
+                {activeCategoryPopover && (
                   <>
+                    {/* Backdrop for Mobile */}
+                    {isMobile && (
+                      <div 
+                        className="fixed inset-0 z-[199] bg-black/60 backdrop-blur-sm"
+                        onClick={() => { setActiveCategoryPopover(null); setActiveCategoryItemIndex(0); }}
+                      />
+                    )}
                     <div
                       ref={categoryPopoverRef}
-                      className={`fixed z-[201] rounded-xl border shadow-2xl overflow-hidden w-[600px] max-w-[calc(100vw-32px)] flex flex-col ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
-                        } ${isDraggingPopover ? 'select-none' : ''}`}
-                      style={(() => {
-                        // Free-floating, draggable position — always clamped to stay fully inside the viewport
+                      className={`fixed z-[201] overflow-hidden flex flex-col ${
+                        isMobile 
+                          ? 'inset-x-3 bottom-6 top-16 rounded-2xl border' 
+                          : 'rounded-xl border shadow-2xl w-[600px] max-w-[calc(100vw-32px)]'
+                      } ${isDark ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'} ${isDraggingPopover ? 'select-none' : ''}`}
+                      style={!isMobile ? (() => {
                         const pos = popoverPos ?? clampPopoverPosition(
                           categoryPopoverAnchor ? categoryPopoverAnchor.left : 16,
                           categoryPopoverAnchor
@@ -3859,10 +4443,8 @@ export const QuickCheckout: React.FC = () => {
                           left: pos.x,
                           height: 'auto',
                           maxHeight: 'calc(100vh - 48px)',
-                          display: 'flex',
-                          flexDirection: 'column' as const,
                         };
-                      })()}
+                      })() : undefined}
                     >
                       {(() => {
                         // ── Category popover search uses the QUADRUPLE CHECKBOX filter, same as main search ──
