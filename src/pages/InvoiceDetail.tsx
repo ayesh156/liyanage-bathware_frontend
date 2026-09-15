@@ -4,7 +4,7 @@ import { Invoice, Customer } from '../types/index';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, ArrowLeft, Printer, Download } from 'lucide-react';
+import { FileText, ArrowLeft, Printer, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { printInvoice } from '../components/modals/PrintInvoiceModal';
 
 interface InvoiceDetailProps {
@@ -175,50 +175,12 @@ export const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ invoices, customer
           </div>
         </div>
 
-        {/* Items Table */}
-        <div className={`p-8 border-b ${theme === 'dark' ? 'border-slate-700/50' : 'border-slate-200'}`}>
-          <table className="w-full">
-            <thead>
-              <tr className={`border-b-2 ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
-                <th className={`p-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {t('invoices.itemName')}
-                </th>
-                <th className={`p-3 text-right text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {t('invoices.quantity')}
-                </th>
-                <th className={`p-3 text-right text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {t('invoices.unitPrice')}
-                </th>
-                <th className={`p-3 text-right text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
-                  {t('common.total')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoice.items.map((item) => (
-                <tr
-                  key={item.id}
-                  className={`border-b ${theme === 'dark' ? 'border-slate-700/30 hover:bg-slate-700/20' : 'border-slate-100 hover:bg-slate-50'}`}
-                >
-                  <td className={`p-3 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{item.productName}</td>
-                  <td className={`p-3 text-right ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {item.quantity}
-                  </td>
-                  <td className={`p-3 text-right ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Rs. {item.unitPrice.toLocaleString()}
-                  </td>
-                  <td className="p-3 text-right font-semibold text-emerald-400">
-                    Rs. {(item.quantity * item.unitPrice).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Items Section - Responsive Table for Desktop & Paginated Cards for Mobile */}
+        <InvoiceItemsView items={invoice.items} theme={theme} t={t} />
 
         {/* Totals */}
-        <div className={`p-8 ${theme === 'dark' ? 'bg-gradient-to-r from-slate-800/50 to-slate-900/50' : 'bg-slate-50'}`}>
-          <div className="flex justify-end max-w-sm ml-auto">
+        <div className={`p-4 sm:p-8 ${theme === 'dark' ? 'bg-gradient-to-r from-slate-800/50 to-slate-900/50' : 'bg-slate-50'}`}>
+          <div className="flex justify-end w-full sm:max-w-sm sm:ml-auto">
             <div className="w-full space-y-3">
               <div className={`flex justify-between ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
                 <span className="font-medium">{t('invoices.subtotal')}:</span>
@@ -228,7 +190,7 @@ export const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ invoices, customer
                 <span className="font-medium">{t('invoices.tax')} (15%):</span>
                 <span>Rs. {invoice.tax.toLocaleString()}</span>
               </div>
-              <div className={`flex justify-between text-lg font-bold pt-3 border-t-2 ${theme === 'dark' ? 'border-slate-700 text-white' : 'border-slate-300 text-slate-900'}`}>
+              <div className={`flex justify-between text-base sm:text-lg font-bold pt-3 border-t-2 ${theme === 'dark' ? 'border-slate-700 text-white' : 'border-slate-300 text-slate-900'}`}>
                 <span>{t('invoices.totalAmount')}:</span>
                 <span className="text-emerald-400">
                   Rs. {invoice.total.toLocaleString()}
@@ -265,6 +227,129 @@ export const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ invoices, customer
           }
         }
       `}</style>
+    </div>
+  );
+};
+
+
+// ── Helper Component for Item Table (Desktop) & Paginated Cards (Mobile) ──
+interface InvoiceItemsViewProps {
+  items: Invoice['items'];
+  theme: string;
+  t: (key: string) => string;
+}
+
+const InvoiceItemsView: React.FC<InvoiceItemsViewProps> = ({ items, theme, t }) => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(items.length / itemsPerPage);
+
+  const paginatedItems = items.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  return (
+    <div className={`p-4 sm:p-8 border-b ${theme === 'dark' ? 'border-slate-700/50' : 'border-slate-200'}`}>
+      {/* Mobile View: Cards + Pagination */}
+      <div className="block sm:hidden space-y-3">
+        {paginatedItems.map((item) => (
+          <div
+            key={item.id}
+            className={`p-3 rounded-xl border ${
+              theme === 'dark'
+                ? 'bg-slate-800/40 border-slate-700/60'
+                : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <div className="flex justify-between items-start gap-2 mb-2">
+              {/* Added min-w-0 and truncate to prevent product name overlapping price */}
+              <span className={`font-semibold text-sm truncate min-w-0 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                {item.productName}
+              </span>
+              <span className="font-bold text-sm text-emerald-400 whitespace-nowrap flex-shrink-0">
+                Rs. {(item.quantity * item.unitPrice).toLocaleString()}
+              </span>
+            </div>
+            <div className={`flex justify-between text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+              <span>Qty: {item.quantity}</span>
+              <span>Unit: Rs. {item.unitPrice.toLocaleString()}</span>
+            </div>
+          </div>
+        ))}
+
+        {/* Mobile Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className={`p-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-40 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-slate-300'
+                  : 'bg-white border-slate-200 text-slate-700'
+              }`}
+            >
+              <ChevronLeft className="w-4 h-4 inline" /> Prev
+            </button>
+            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`p-1.5 rounded-lg border text-xs font-medium transition-colors disabled:opacity-40 ${
+                theme === 'dark'
+                  ? 'bg-slate-800 border-slate-700 text-slate-300'
+                  : 'bg-white border-slate-200 text-slate-700'
+              }`}
+            >
+              Next <ChevronRight className="w-4 h-4 inline" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop View: Full Table */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className={`border-b-2 ${theme === 'dark' ? 'border-slate-700' : 'border-slate-200'}`}>
+              <th className={`p-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                {t('invoices.itemName')}
+              </th>
+              <th className={`p-3 text-right text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                {t('invoices.quantity')}
+              </th>
+              <th className={`p-3 text-right text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                {t('invoices.unitPrice')}
+              </th>
+              <th className={`p-3 text-right text-sm font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
+                {t('common.total')}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item) => (
+              <tr
+                key={item.id}
+                className={`border-b ${theme === 'dark' ? 'border-slate-700/30 hover:bg-slate-700/20' : 'border-slate-100 hover:bg-slate-50'}`}
+              >
+                <td className={`p-3 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{item.productName}</td>
+                <td className={`p-3 text-right ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  {item.quantity}
+                </td>
+                <td className={`p-3 text-right ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Rs. {item.unitPrice.toLocaleString()}
+                </td>
+                <td className="p-3 text-right font-semibold text-emerald-400">
+                  Rs. {(item.quantity * item.unitPrice).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

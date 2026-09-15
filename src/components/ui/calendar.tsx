@@ -1,68 +1,177 @@
-import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { 
+  format, addMonths, subMonths, startOfMonth, endOfMonth, 
+  startOfWeek, endOfWeek, isSameMonth, isSameDay, addDays, 
+  isWithinInterval, parseISO 
+} from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-
-export type CalendarProps = React.ComponentProps<typeof DayPicker>;
-
-function Calendar({
-  className,
-  classNames,
-  showOutsideDays = true,
-  ...props
-}: CalendarProps) {
-  return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      className={cn("p-3", className)}
-      classNames={{
-        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: cn(
-          buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-        ),
-        nav_button_previous: "absolute left-1",
-        nav_button_next: "absolute right-1",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
-        head_cell:
-          "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-        row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-        day: cn(
-          buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100",
-        ),
-        day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-        day_today: "bg-accent text-accent-foreground",
-        day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-        day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
-        day_hidden: "invisible",
-        ...classNames,
-      }}
-      components={{
-        Chevron: (props) => {
-          if (props.orientation === "left") {
-            return <ChevronLeft className="h-4 w-4" />;
-          }
-          return <ChevronRight className="h-4 w-4" />;
-        },
-      }}
-      {...props}
-    />
-  );
+interface CustomCalendarProps {
+  selected?: DateRange;
+  onSelect?: (range: DateRange | undefined) => void;
+  onClose?: () => void;
+  isDark?: boolean;
 }
-Calendar.displayName = "Calendar";
 
-export { Calendar };
+export const Calendar: React.FC<CustomCalendarProps> = ({
+  selected,
+  onSelect,
+  onClose,
+  isDark = true,
+}) => {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [range, setRange] = useState<DateRange | undefined>(selected);
+
+  const handleDateClick = (day: Date) => {
+    let newRange: DateRange | undefined;
+
+    if (!range || (range.from && range.to)) {
+      newRange = { from: day, to: undefined };
+    } else if (range.from && !range.to) {
+      if (day < range.from) {
+        newRange = { from: day, to: undefined };
+      } else {
+        newRange = { from: range.from, to: day };
+      }
+    }
+
+    setRange(newRange);
+    if (onSelect) onSelect(newRange);
+  };
+
+  const renderMonth = (monthDate: Date) => {
+    const monthStart = startOfMonth(monthDate);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+
+    const days = [];
+    let day = startDate;
+
+    while (day <= endDate) {
+      days.push(day);
+      day = addDays(day, 1);
+    }
+
+    const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+    return (
+      <div className="w-[260px] p-2">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-bold">{format(monthDate, 'MMMM yyyy')}</span>
+        </div>
+
+        {/* Days Header */}
+        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+          {weekDays.map((d) => (
+            <span key={d} className="text-[10px] font-semibold text-slate-400">
+              {d}
+            </span>
+          ))}
+        </div>
+
+        {/* Grid Days */}
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {days.map((d, idx) => {
+            const isSelectedFrom = range?.from && isSameDay(d, range.from);
+            const isSelectedTo = range?.to && isSameDay(d, range.to);
+            const isInRange =
+              range?.from && range?.to && isWithinInterval(d, { start: range.from, end: range.to });
+            const isCurrentMonth = isSameMonth(d, monthDate);
+
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleDateClick(d)}
+                className={`h-8 w-8 text-xs font-medium rounded-lg transition-all flex items-center justify-center ${
+                  !isCurrentMonth ? 'text-slate-600 opacity-30' : ''
+                } ${
+                  isSelectedFrom || isSelectedTo
+                    ? 'bg-orange-500 text-white font-bold shadow-md shadow-orange-500/30'
+                    : isInRange
+                    ? 'bg-orange-500/20 text-orange-300 rounded-none'
+                    : isDark
+                    ? 'hover:bg-slate-800 text-slate-200'
+                    : 'hover:bg-slate-100 text-slate-700'
+                }`}
+              >
+                {format(d, 'd')}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className={`p-3 rounded-2xl select-none ${isDark ? 'text-white' : 'text-slate-900'}`}>
+      {/* Top Controls */}
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-slate-700/40">
+        <button
+          type="button"
+          onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+          className="p-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-xs font-bold text-orange-400">
+          {range?.from ? format(range.from, 'MMM dd, yyyy') : 'Start'} 
+          {' ~ '} 
+          {range?.to ? format(range.to, 'MMM dd, yyyy') : 'End'}
+        </span>
+        <button
+          type="button"
+          onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+          className="p-1 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Calendar Months Display */}
+      <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+        {renderMonth(currentMonth)}
+      </div>
+
+      {/* Footer Controls */}
+<div className="flex items-center justify-between pt-3 mt-2 border-t border-slate-700/40">
+  <button
+    type="button"
+    onClick={() => {
+      setRange(undefined);
+      if (onSelect) onSelect(undefined);
+    }}
+    className="px-2 py-1 text-xs text-rose-400 hover:underline"
+  >
+    Clear
+  </button>
+
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={onClose}
+      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+        isDark 
+          ? 'border-slate-700 text-slate-300 hover:bg-slate-800' 
+          : 'border-slate-300 text-slate-600 hover:bg-slate-100'
+      }`}
+    >
+      Cancel
+    </button>
+    
+    <button
+      type="button"
+      onClick={onClose}
+      className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
+    >
+      Done
+    </button>
+  </div>
+</div>
+    </div>
+  );
+};

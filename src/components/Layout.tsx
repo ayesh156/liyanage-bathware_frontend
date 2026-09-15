@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
+import { api } from '../lib/api';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { Package, FileText, Users, Home, Sparkles, Moon, Sun, Menu, X } from 'lucide-react';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -27,11 +28,50 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Added states and fetch effect to show counts dynamically in main layout
+  const [counts, setCounts] = useState<{ invoices: number | null; customers: number | null }>({
+    invoices: null,
+    customers: null,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCounts = async () => {
+      try {
+        const [invRes, custRes] = await Promise.allSettled([
+          api.get('/invoices', { limit: 1 }, true),
+          api.get('/customers', { limit: 1 }, true)
+        ]);
+
+        let invCount = null;
+        let custCount = null;
+
+        if (invRes.status === 'fulfilled') {
+          const res: any = invRes.value;
+          invCount = Array.isArray(res) ? res.length : (res?.total || res?.data?.length || 0);
+        }
+        if (custRes.status === 'fulfilled') {
+          const res: any = custRes.value;
+          custCount = Array.isArray(res) ? res.length : (res?.total || res?.data?.length || 0);
+        }
+
+        if (isMounted) {
+          setCounts({ invoices: invCount, customers: custCount });
+        }
+      } catch (err) {
+        console.error('[Layout] Failed to fetch layout badge counts:', err);
+      }
+    };
+
+    fetchCounts();
+    return () => { isMounted = false; };
+  }, []);
+
   const navItems = [
     { path: '/', icon: Home, label: 'nav.home' },
-    { path: '/invoices', icon: FileText, label: 'nav.invoices' },
+    { path: '/invoices', icon: FileText, label: 'nav.invoices', badge: counts.invoices !== null ? String(counts.invoices) : null },
     { path: '/products', icon: Package, label: 'nav.products' },
-    { path: '/customers', icon: Users, label: 'nav.customers' },
+    { path: '/customers', icon: Users, label: 'nav.customers', badge: counts.customers !== null ? String(counts.customers) : null },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -45,26 +85,25 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="absolute -bottom-40 right-1/3 w-72 h-72 bg-blue-500/10 rounded-full blur-[100px]" />
       </div>
 
-      {/* Header — Higher z-index to overlay bottom dock modals */}
+      {/* Header — Mobile-optimized spacing & higher z-index */}
       <header className={`sticky top-0 z-[60] border-b backdrop-blur-xl transition-colors duration-300 ${theme === 'dark' ? 'border-slate-800/50 bg-[#0a0f1a]/95' : 'border-slate-200 bg-white/95'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo and Brand */}
-            <Link to="/" className="flex items-center gap-3 group">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
+            {/* Logo and Brand - Compact for mobile */}
+            <Link to="/" className="flex items-center gap-2 sm:gap-3 group flex-shrink-0">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
-                <div className="relative w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-                  {/* Creative hardware wrench/hammer logo */}
-                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <div className="relative w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <svg className="w-4 h-4 sm:w-6 sm:h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                   </svg>
                 </div>
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold dark:text-white text-slate-900">
-                  Liyanage<span className="text-amber-500"> Hardware</span>
+                <span className="text-base sm:text-xl font-bold dark:text-white text-slate-900 leading-tight">
+                  Liyanage<span className="text-amber-500 hidden xs:inline"> Hardware</span>
                 </span>
-                <span className="text-[10px] dark:text-slate-500 text-slate-400 -mt-1 tracking-wider uppercase">Quality Building Materials</span>
+                <span className="hidden sm:inline text-[10px] dark:text-slate-500 text-slate-400 -mt-1 tracking-wider uppercase">Quality Building Materials</span>
               </div>
             </Link>
 
@@ -199,8 +238,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </nav>
       )}
 
-      {/* Main Content - add bottom padding for mobile nav */}
-      <main className={`relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ${isMobile ? 'pb-28' : ''}`}>
+{/* 🌟 [FULL-SCREEN FLUSH] Mobile එකේදී කිසිදු ඉඩක් ඉතිරි නොවී සම්පූර්ණ තිරයටම Edge-to-Edge විසඳීම */}
+      <main className={`relative w-full m-0 p-0 ${
+        isMobile ? '!w-full !max-w-none overflow-x-hidden min-h-screen' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+      }`}>
         {children}
       </main>
 

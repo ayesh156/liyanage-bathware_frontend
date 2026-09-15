@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, ProductVariant } from '../../types/index';
-import { mockBrands, mockCategories, mockSuppliers } from '../../data/mockData';
+import { mockSuppliers } from '../../data/mockData';
+import { useCatalog } from '../../contexts/CatalogContext';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../contexts/ThemeContext';
 import { translateToSinhala } from '../../lib/sinhalaTranslator';
@@ -17,14 +18,11 @@ interface ProductFormModalProps {
 
 interface ProductFormData {
   name: string;
-  
   nameAlt?: string;
   sku: string;
   barcode?: string;
   categoryId: string;
   category: string;
-  brandId?: string;
-  brand?: string;
   costPrice: number;
   wholesalePrice: number;
   retailPrice: number;
@@ -52,6 +50,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const { theme } = useTheme();
+  // 🌟 Database එකෙන් සජීවීව එන Categories ලබාගැනීම
+  const { categories } = useCatalog();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showVariants, setShowVariants] = useState(false);
   
@@ -62,8 +62,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     barcode: '',
     categoryId: 'cat-001',
     category: 'building_materials',
-    brandId: '',
-    brand: '',
     costPrice: 0,
     wholesalePrice: 0,
     retailPrice: 0,
@@ -104,8 +102,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         barcode: product.barcode || '',
         categoryId: product.categoryId || 'cat-001',
         category: product.category,
-        brandId: product.brandId || '',
-        brand: product.brand || '',
         costPrice: product.costPrice || 0,
         wholesalePrice: product.wholesalePrice || 0,
         retailPrice: product.retailPrice || product.price || 0,
@@ -133,8 +129,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
         barcode: '',
         categoryId: 'cat-001',
         category: 'building_materials',
-        brandId: '',
-        brand: '',
         costPrice: 0,
         wholesalePrice: 0,
         retailPrice: 0,
@@ -159,20 +153,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   }, [product, isOpen]);
 
   const handleCategoryChange = (categoryId: string) => {
-    const category = mockCategories.find(c => c.id === categoryId);
+    const category = (categories as any[]).find(c => c.id === categoryId);
     setFormData({
       ...formData,
       categoryId,
-      category: category?.name.toLowerCase().replace(/ & /g, '_').replace(/ /g, '_') || 'other',
-    });
-  };
-
-  const handleBrandChange = (brandId: string) => {
-    const brand = mockBrands.find(b => b.id === brandId);
-    setFormData({
-      ...formData,
-      brandId,
-      brand: brand?.name || '',
+      category: category?.name?.toLowerCase().replace(/ & /g, '_').replace(/ /g, '_') || 'other',
     });
   };
 
@@ -238,8 +223,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       barcode: effectiveBarcode,
       categoryId: formData.categoryId,
       category: formData.category as Product['category'],
-      brandId: formData.brandId,
-      brand: formData.brand,
       costPrice: formData.costPrice,
       wholesalePrice: formData.wholesalePrice,
       retailPrice: formData.retailPrice,
@@ -283,8 +266,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className={`max-w-4xl max-h-[90vh] overflow-y-auto p-0 ${
-        theme === 'dark' ? 'bg-slate-900 border-slate-700/50' : 'bg-white border-slate-200'
+      {/* 🌟 [MOBILE FULLSHEET FIX] Mobile හිදී සම්පූර්ණ තිරයම ආවරණය වන (h-[95vh]), සුමටව Scroll කළ හැකි Bottom Drawer Modal එකක් */}
+      <DialogContent className={`w-full max-w-full sm:max-w-4xl h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col p-0 rounded-t-3xl sm:rounded-2xl border shadow-2xl overflow-hidden ${
+        theme === 'dark' ? 'bg-slate-900 border-slate-700/70' : 'bg-white border-slate-200'
       }`}>
         <DialogHeader className="sr-only">
           <DialogTitle>{isEditing ? t('productsForm.editProduct') : t('productsForm.addNewProduct')}</DialogTitle>
@@ -292,8 +276,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             {isEditing ? t('productsForm.updateInfo') : t('productsForm.addInfo')}
           </DialogDescription>
         </DialogHeader>
-        {/* Gradient Header */}
-        <div className={`p-5 text-white ${isEditing 
+        {/* Gradient Header - Mobile optimized padding */}
+        <div className={`p-4 sm:p-5 text-white ${isEditing 
           ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500' 
           : 'bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600'
         }`} aria-hidden="true">
@@ -312,8 +296,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
-          {/* Basic Information */}
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Scrollable Form Body */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-5">
+            {/* Basic Information */}
           <div className="space-y-3">
             <div className={`flex items-center gap-2 ${theme === 'dark' ? 'text-slate-300' : 'text-slate-600'}`}>
               <Tag className="w-4 h-4" />
@@ -372,12 +358,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               </div>
             </div>
           </div>
+          </div>
 
-          {/* Category & Brand */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Category & Unit (Brand removed cleanly) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className={`${labelClasses} flex items-center gap-1`}>
-                <Layers className="w-3.5 h-3.5" /> {t('productsForm.category')} * <span className="text-xs text-slate-500">({mockCategories.length} {t('productsForm.available')})</span>
+                <Layers className="w-3.5 h-3.5" /> {t('productsForm.category')} * <span className="text-xs text-slate-500">({categories.length} {t('productsForm.available')})</span>
               </label>
               <SearchableSelect
                 value={formData.categoryId}
@@ -386,34 +373,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 searchPlaceholder={t('common.search')}
                 emptyMessage={t('productsForm.messages.noCategories')}
                 theme={theme}
-                options={mockCategories.map(cat => ({
-                  value: cat.id,
-                  label: `${cat.name}${cat.nameAlt ? ` (${cat.nameAlt})` : ''}`,
-                  icon: <Layers className="w-4 h-4" />
-                }))}
+                options={(categories as any[]).map((cat) => {
+                  const altName = cat?.nameSinhala || cat?.nameSi || '';
+                  return {
+                    value: cat.id,
+                    label: `${cat.name}${altName ? ` (${altName})` : ''}`,
+                    icon: <Layers className="w-4 h-4" />
+                  };
+                })}
               />
             </div>
-            <div className="space-y-1.5">
-              <label className={`${labelClasses} flex items-center gap-1`}>
-                <Building2 className="w-3.5 h-3.5" /> {t('productsForm.brand')} <span className="text-xs text-slate-500">({mockBrands.filter(b => b.isActive).length} {t('productsForm.available')})</span>
-              </label>
-              <SearchableSelect
-                value={formData.brandId || ''}
-                onValueChange={(value) => handleBrandChange(value)}
-                placeholder={t('productsForm.placeholders.selectBrand')}
-                searchPlaceholder={t('common.search')}
-                emptyMessage={t('productsForm.messages.noBrands')}
-                theme={theme}
-                options={[
-                  { value: '', label: t('productsForm.messages.noBrand'), icon: <Building2 className="w-4 h-4 text-slate-400" /> },
-                  ...mockBrands.filter(b => b.isActive).map(brand => ({
-                    value: brand.id,
-                    label: `${brand.name} (${brand.country})`,
-                    icon: <Building2 className="w-4 h-4" />
-                  }))
-                ]}
-              />
-            </div>
+            
             <div className="space-y-1.5">
               <label className={`${labelClasses} flex items-center gap-1`}>
                 <Scale className="w-3.5 h-3.5" /> {t('productsForm.unit')} *
@@ -446,7 +416,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <DollarSign className="w-4 h-4" />
               <span className="text-sm font-semibold">{t('productsForm.pricing')}</span>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* 🌟 [MOBILE GRID FIX] Mobile වලදී 2-columns හා Desktop හි 4-columns ලෙස සකසා ඇත */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <div className="space-y-1.5">
                 <label className={labelClasses}>{t('productsForm.costPrice')} *</label>
                 <input
@@ -822,18 +793,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             )}
           </div>
 
-          {/* Footer Actions */}
-          <div className={`flex gap-3 pt-4 border-t ${theme === 'dark' ? 'border-slate-700/50' : 'border-slate-200'}`}>
+          {/* 🌟 Sticky Bottom Action Bar — Mobile හිදී යටින් නොසෙල්වී පිහිටයි */}
+          <div className={`flex gap-2.5 p-3.5 sm:p-4 border-t flex-shrink-0 ${
+            theme === 'dark' ? 'border-slate-800 bg-slate-900/98' : 'border-slate-200 bg-white'
+          }`}>
             <button
               type="submit"
-              className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 text-white rounded-xl font-semibold transition-all shadow-lg ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 text-white rounded-xl font-bold text-sm transition-all shadow-lg active:scale-[0.98] ${
                 isEditing
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/25'
-                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-500/25'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-500/25'
+                  : 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-500/25'
               }`}
             >
-              {isEditing ? <Save className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-              {isEditing ? t('productsForm.saveChanges') : t('productsForm.addProduct')}
+              {isEditing ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              <span>{isEditing ? t('productsForm.saveChanges') : t('productsForm.addProduct')}</span>
             </button>
             <button
               type="button"

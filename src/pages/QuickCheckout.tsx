@@ -2268,7 +2268,7 @@ export const QuickCheckout: React.FC = () => {
   // ==================== MOBILE LAYOUT ====================
   if (isMobile) {
     return (
-      <div className={`min-h-screen ${isDark ? 'bg-slate-900' : 'bg-slate-50'} pb-72`}>
+      <div className={`min-h-screen w-full m-0 p-0 overflow-x-hidden ${isDark ? 'bg-slate-900' : 'bg-slate-50'} pb-80`}>
         <ShortcutMapOverlay
           isOpen={showShortcutMap}
           onClose={() => setShowShortcutMap(false)}
@@ -2279,8 +2279,8 @@ export const QuickCheckout: React.FC = () => {
           totalSteps={1}
         />
 
-       {/* 🌟 [MOBILE HEADER REFACTOR] Single Sticky Container combining Top Nav, Checkboxes, and Search Bar */}
-        <div className={`sticky top-0 z-50 flex flex-col gap-3 pt-3 pb-3 ${isDark ? 'bg-slate-900/95 backdrop-blur-xl border-b border-slate-800 shadow-black/20' : 'bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-sm'} shadow-lg`}>
+       {/* 🌟 [FLUSH ZERO-MARGIN HEADER] තිරයේ ඉහළටම ඇලී දෙපසටම විහිදෙන Flush Sticky Header එක */}
+        <div className={`sticky top-0 z-30 w-full !m-0 flex flex-col gap-2 pt-2 pb-2.5 px-3.5 ${isDark ? 'bg-slate-900 border-b border-slate-800' : 'bg-white border-b border-slate-200 shadow-sm'}`}>
           
           {/* 1. Top Navbar (Title & Actions) */}
           <div className="flex items-center justify-between px-3">
@@ -2302,7 +2302,7 @@ export const QuickCheckout: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1.5">
-              {/* 🌟 Mobile Receipt Preview Open Button */}
+              {/* 🌟 Mobile Receipt Preview Button */}
               <button
                 type="button"
                 onClick={() => setShowMobileReceiptPreview(true)}
@@ -2315,16 +2315,16 @@ export const QuickCheckout: React.FC = () => {
               >
                 <Receipt className="w-4 h-4" />
               </button>
+
+              {/* 🌟 [FIX: MOBILE CLEANUP] Sound Option බොත්තම Mobile view එකෙන් ඉවත් කර ඇත */}
+
+              {/* Reset / Clear Cart Button */}
               <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`p-2 rounded-xl transition-all active:scale-95 ${soundEnabled ? 'bg-emerald-500/10 text-emerald-500' : isDark ? 'bg-slate-800 text-slate-500' : 'bg-slate-100 text-slate-400'}`}
-              >
-                {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              </button>
-              <button
+                type="button"
                 onClick={clearCart}
                 disabled={items.length === 0}
                 className={`p-2 rounded-xl transition-all active:scale-95 disabled:opacity-30 ${isDark ? 'bg-red-500/10 text-red-500' : 'bg-red-50 text-red-500'}`}
+                title="Clear Cart"
               >
                 <RotateCcw className="w-4 h-4" />
               </button>
@@ -2475,7 +2475,7 @@ export const QuickCheckout: React.FC = () => {
             {/* 🌟 [FIX] Backdrop click හරහා close වීම සම්පූර්ණයෙන්ම ඉවත් කර ඇත (පිටත click කළත් close නොවේ) */}
 
             {/* Bottom Sheet Container */}
-            <div className={`relative z-10 w-full max-w-lg rounded-t-3xl border-t border-x flex flex-col max-h-[75vh] h-[75vh] overflow-hidden shadow-2xl ${
+            <div className={`relative z-30 w-full max-w-lg rounded-t-3xl border-t border-x flex flex-col max-h-[75vh] h-[75vh] overflow-hidden shadow-2xl ${
               isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}>
               
@@ -2641,8 +2641,9 @@ export const QuickCheckout: React.FC = () => {
           </div>
         )}
 
-        <div className="px-3 pb-4">
-          <div className={`rounded-xl border min-h-[150px] ${isDark ? 'bg-slate-800/30 border-slate-700/50' : 'bg-white border-slate-200 shadow-sm'}`}>
+        {/* 🌟 Mobile එකේදී දෙපස Margin ඉවත් කර අයිනටම Card එක විහිදුවීම */}
+        <div className="px-2 pb-4">
+          <div className={`rounded-2xl border min-h-[150px] ${isDark ? 'bg-slate-800/40 border-slate-700/60' : 'bg-white border-slate-200 shadow-sm'}`}>
             <div className={`flex items-center justify-between px-3 py-2 border-b ${isDark ? 'border-slate-700/50' : 'border-slate-100'}`}>
               <h2 className={`font-bold flex items-center gap-1.5 text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>
                 <ShoppingCart className="w-4 h-4" />
@@ -2666,36 +2667,16 @@ export const QuickCheckout: React.FC = () => {
                 <p className="text-[11px] mt-1 text-center">{t('quickCheckout.scanOrSearch')}</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {items.map((item, index) => (
                   <div
                     key={item.id}
-                    onTouchStart={(e) => handleTouchStart(e, item.id)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    style={{
-                      transform: swipedItemId === item.id ? `translateX(${touchDeltaX}px)` : 'translateX(0)',
-                      transition: swipedItemId === item.id ? 'none' : 'transform 0.2s ease-out',
-                    }}
-                    className={`relative p-2.5 ${swipedItemId === item.id && touchDeltaX < -30
-                      ? isDark ? 'bg-red-500/20' : 'bg-red-50'
-                      : swipedItemId === item.id && touchDeltaX > 30
-                        ? isDark ? 'bg-emerald-500/20' : 'bg-emerald-50'
-                        : ''
-                      }`}
+                    className={`relative p-3 transition-colors ${
+                      isDark ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
+                    }`}
                   >
-                    {swipedItemId === item.id && touchDeltaX < -30 && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500">
-                        <Trash2 className="w-5 h-5" />
-                      </div>
-                    )}
-                    {swipedItemId === item.id && touchDeltaX > 30 && (
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500">
-                        <Plus className="w-5 h-5" />
-                      </div>
-                    )}
-
-                    <div className="flex items-start gap-2">
+                    {/* 🌟 [SMOOTH VERTICAL SCROLL] Swipe gestures ඉවත් කර, scroll කිරීමේදී කාඩ්පත එහෙ මෙහෙ වීම සම්පූර්ණයෙන්ම වළක්වා ඇත */}
+                    <div className="flex items-start gap-2.5">
                       <div className="flex-1 min-w-0">
                         {(() => {
                           const rawName = isSinhala ? (item.productNameSi || item.productName) : item.productName;
@@ -2833,8 +2814,8 @@ export const QuickCheckout: React.FC = () => {
           </div>
         </div>
 
-       {/* 🌟 [SOLID MOBILE CHECKOUT DOCK] 100% Solid Background (No Transparency), z-40 to prevent sidebar clashes */}
-        <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all ${isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white border-t border-slate-200'} shadow-[0_-10px_30px_rgba(0,0,0,0.25)]`}>
+       {/* 🌟 [SOLID MOBILE CHECKOUT DOCK] z-30 මඟින් Sidebar (z-50+) එක ආ විට ඊට යටින් මනාව වැසී පවතී */}
+        <div className={`fixed bottom-0 left-0 right-0 z-30 transition-all ${isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white border-t border-slate-200'} shadow-[0_-10px_30px_rgba(0,0,0,0.25)]`}>
           <div className="flex justify-center pt-2 pb-1">
             <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
           </div>
@@ -2990,7 +2971,7 @@ export const QuickCheckout: React.FC = () => {
         </div>
 
         {/* 🌟 [FIX: PERMANENT SOLID MOBILE BOTTOM BAR] Always visible, never cut off, 100% solid color */}
-        <div className={`fixed bottom-0 left-0 right-0 z-40 transition-all ${isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white border-t border-slate-200 shadow-2xl'}`}>
+        <div className={`fixed bottom-0 left-0 right-0 z-30 transition-all ${isDark ? 'bg-slate-900 border-t border-slate-800' : 'bg-white border-t border-slate-200 shadow-2xl'}`}>
           <div className="flex justify-center pt-1.5 pb-0.5">
             <div className={`w-8 h-1 rounded-full ${isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
           </div>
@@ -3363,6 +3344,14 @@ export const QuickCheckout: React.FC = () => {
               </div>
             </div>
         )}
+
+        {/* 🌟 [MOBILE PRODUCT MODAL] Mobile view එකේදී "+" බොත්තම click කළ විට ProductFormModal එක render වීම */}
+        <ProductFormModal
+          isOpen={showProductFormModal}
+          onClose={() => setShowProductFormModal(false)}
+          mode="create"
+          initialData={null}
+        />
       </div>
     );
   }

@@ -129,24 +129,25 @@ export const CategoryGrid: React.FC<CategoryGridProps> = ({ onItemSelect }) => {
   }, [inventoryItems, categoryCounts]);
 
   // ── 3. Map optimized name list back to Category objects for the grid ──
-  // "සියල්ල" gets a synthetic Category entry; all others resolve from mockCategories.
-  const ALL_CATEGORY_SENTINEL: Category = {
-    id: '__all__',
-    name: 'සියල්ල',
-    nameAlt: 'සියල්ල',
-    icon: 'all',
-    description: 'Show all categories',
-    usageCount: inventoryItems.length,
-  };
+// 🌟 [FIX: TYPE-SAFE CATEGORY SENTINEL] Category schema එකට අනුකූලව nameAlt වෙනුවට nameSinhala/nameSi යෙදීම
+const ALL_CATEGORY_SENTINEL: any = {
+  id: '__all__',
+  name: 'සියල්ල',
+  nameSinhala: 'සියල්ල',
+  nameSi: 'සියල්ල',
+  icon: 'all',
+  description: 'Show all categories',
+  usageCount: inventoryItems.length,
+};
 
-  const sortedCategories = useMemo(() => {
-    return optimizedCategoryNames.map(catName => {
-      if (catName === 'සියල්ල') return ALL_CATEGORY_SENTINEL;
-      // Match by name or nameAlt against the dynamic mockCategories array
-      return (
-        mockCategories.find(
-          c => c.name === catName || c.nameAlt === catName
-        ) ?? {
+const sortedCategories = useMemo(() => {
+  return optimizedCategoryNames.map(catName => {
+    if (catName === 'සියල්ල') return ALL_CATEGORY_SENTINEL;
+    // 🌟 [FIX: TYPE-SAFE LOOKUP] any cast මඟින් mockCategories හි nameAlt දෝෂය වැළැක්වීම
+    return (
+      (mockCategories as any[]).find(
+        (c) => c.name === catName || c.nameSinhala === catName || c.nameSi === catName || c?.nameAlt === catName
+      ) ?? {
           id: `cat-inline-${catName}`,
           name: catName,
           nameAlt: catName,

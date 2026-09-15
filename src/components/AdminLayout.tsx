@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { api } from '../lib/api';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { SidebarTooltip } from './SidebarTooltip';
 import { Navbar } from './layout/Navbar';
@@ -243,14 +244,51 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     }
   }, [profileDropdownOpen]);
 
+  // Added states to fetch real counts from API
+  const [counts, setCounts] = useState<{ invoices: number | null; customers: number | null }>({
+    invoices: null,
+    customers: null,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCounts = async () => {
+      try {
+        const [invRes, custRes] = await Promise.allSettled([
+          api.get('/invoices', { limit: 1 }, true),
+          api.get('/customers', { limit: 1 }, true)
+        ]);
+
+        let invCount = null;
+        let custCount = null;
+
+        if (invRes.status === 'fulfilled') {
+          const res: any = invRes.value;
+          invCount = Array.isArray(res) ? res.length : (res?.total || res?.data?.length || 0);
+        }
+        if (custRes.status === 'fulfilled') {
+          const res: any = custRes.value;
+          custCount = Array.isArray(res) ? res.length : (res?.total || res?.data?.length || 0);
+        }
+
+        if (isMounted) {
+          setCounts({ invoices: invCount, customers: custCount });
+        }
+      } catch (err) {
+        console.error('[AdminLayout] Failed to fetch layout badge counts:', err);
+      }
+    };
+
+    fetchCounts();
+    return () => { isMounted = false; };
+  }, []);
+
   const navItems = [
     { path: '/invoices/quick-checkout', icon: Zap, label: 'quickCheckout.title', badge: null },
-    { path: '/invoices', icon: FileText, label: 'nav.invoices', badge: '12' },
+    { path: '/invoices', icon: FileText, label: 'nav.invoices', badge: counts.invoices !== null ? String(counts.invoices) : null },
     { path: '/products', icon: Package, label: 'nav.products', badge: null },
     { path: '/product-category', icon: FolderTree, label: 'nav.productCategory', badge: null },
-    { path: '/customers', icon: Users, label: 'nav.customers', badge: '3' },
-    // { path: '/suppliers', icon: Truck, label: 'nav.suppliers', badge: null },
-    // { path: '/financial-reports', icon: TrendingUp, label: 'nav.financialReports', badge: null },
+    { path: '/customers', icon: Users, label: 'nav.customers', badge: counts.customers !== null ? String(counts.customers) : null },
   ];
 
   const bottomNavItems = [
@@ -448,14 +486,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               })}
             </div>
           </div>
-          <div className={`mt-4 p-4 rounded-2xl border ${theme === 'dark' ? 'bg-gradient-to-br from-orange-500/10 to-rose-500/5 border-orange-500/20' : 'bg-gradient-to-br from-orange-50 to-rose-50 border-orange-200/50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-orange-500" />
-              <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{t('sidebar.proFeatures')}</span>
-            </div>
-            <p className={`text-xs mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-600'}`}>{t('sidebar.proDescription')}</p>
-            <button className="w-full py-2 px-3 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-sm font-medium rounded-lg">{t('sidebar.upgradeNow')}</button>
-          </div>
+          
         </nav>
       </aside>
     </>
