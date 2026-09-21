@@ -97,7 +97,13 @@ async function request<T>(endpoint: string, options: ApiOptions = {}): Promise<T
 
   // Build headers with optional auth token
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+
+  // Auth token is stored in sessionStorage by AuthContext; keep localStorage as legacy fallback.
+  const token =
+    sessionStorage.getItem('auth_token') ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('auth_token');
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
